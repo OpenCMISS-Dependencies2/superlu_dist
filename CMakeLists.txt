@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 3.18.1 FATAL_ERROR)
 # Project version numbers
 #project(SuperLU_DIST C CXX CUDA)
 project(SuperLU_DIST C CXX)
-set(VERSION_MAJOR "8")
-set(VERSION_MINOR "2")
+set(VERSION_MAJOR "9")
+set(VERSION_MINOR "0")
 set(VERSION_BugFix "0")
 set(PROJECT_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_BugFix})
 
@@ -47,6 +47,11 @@ option(TPL_COMBBLAS_INCLUDE_DIRS "List of absolute paths to CombBLAS include dir
 #-- CUDA
 option(TPL_ENABLE_CUDALIB   "Enable the CUDA libraries" OFF)
 option(TPL_ENABLE_HIPLIB   "Enable the HIP libraries" OFF)
+#-- NVSHMEM
+option(TPL_ENABLE_NVSHMEM   "Enable the NVSHMEM libraries" OFF)
+option(TPL_ENABLE_ROCSHMEM   "Enable the ROCSHMEM libraries" OFF)
+#-- MAGMA 
+option(TPL_ENABLE_MAGMALIB "Enable the MAGMA library" OFF)
 
 ######################################################################
 #
@@ -188,6 +193,7 @@ if (TPL_ENABLE_CUDALIB)   ## want to use cuda
     enable_language(CUDA)
     find_package(CUDA REQUIRED)
     if (CUDA_FOUND)
+      set(CUDA_SEPARABLE_COMPILATION ON)  
       if(NOT CMAKE_CUDA_ARCHITECTURES)
         # if(${CMAKE_VERSION} VERSION_LESS_EQUAL "3.13.4")
         #   cuda_select_nvcc_arch_flags(ARCH_FLAGS "Auto") # optional argument for arch to add
@@ -205,7 +211,11 @@ if (TPL_ENABLE_CUDALIB)   ## want to use cuda
       # endif()
       endif()
       set(HAVE_CUDA TRUE)
-      set(CMAKE_CUDA_FLAGS_RELEASE "-O3 --expt-relaxed-constexpr -DNDEBUG" CACHE STRING "")
+      if (TPL_ENABLE_NVSHMEM)
+        set(CMAKE_CUDA_FLAGS_RELEASE "-O3 --expt-relaxed-constexpr -DNDEBUG -rdc=true" CACHE STRING "")
+      else()
+        set(CMAKE_CUDA_FLAGS_RELEASE "-O3 --expt-relaxed-constexpr -DNDEBUG" CACHE STRING "")
+      endif()
       set(CMAKE_CUDA_FLAGS_DDEBUG "-O0 --expt-relaxed-constexpr -DDEBUG -g" CACHE STRING "")
     endif()
 
@@ -221,6 +231,8 @@ if (TPL_ENABLE_CUDALIB)   ## want to use cuda
        set(CUDA_LIBRARIES "${CUDAToolkit_LIBRARY_ROOT}/lib64/libcudart.so")
        # expose the following to make.inc, but location may not be reliable
        # set(CUDA_CUBLAS_LIBRARIES "${CUDAToolkit_LIBRARY_ROOT}/lib64/libcublas.so")
+       set(CUDA_CUSPARSE_LIBRARIES "${CUDAToolkit_LIBRARY_ROOT}/lib64/libcusparse.so")
+       set(CUDA_CUSOLVER_LIBRARIES "${CUDAToolkit_LIBRARY_ROOT}/lib64/libcusolver.so")
     else()
 	message("-- CUDAToolkit_LIBRARY_ROOT empty, not setting CUDA_LIBRARIES")
     endif()
@@ -237,6 +249,7 @@ if (TPL_ENABLE_CUDALIB)   ## want to use cuda
     message("-- CUDA libraries not found.")
   endif()
 endif()
+
 
 #--------------------- OpenMP ---------------------
 if (NOT DEFINED enable_openmp)
@@ -275,10 +288,19 @@ if (TPL_ENABLE_CUDALIB)   ## want to use cuda
     set(HAVE_CUDA TRUE)
     # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_CUDA")
     # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -DHAVE_CUDA")
+
+    #--------------------- NVSHMEM libraries ---------------------
+    if (TPL_ENABLE_NVSHMEM)   ## want to use nvshmem
+        set(NVSHMEM_LIB ${TPL_NVSHMEM_LIBRARIES}) 
+        message("-- Enabled support for NVSHMEM='${NVSHMEM_LIB}'")
+        set(HAVE_NVSHMEM TRUE)
+    endif()
+
   else()
     message("-- CUDA libraries not found.")
   endif()
 endif()
+
 
 
 
@@ -376,6 +398,22 @@ if(LAPACK_FOUND)
     set(SLU_HAVE_LAPACK TRUE)
 else()
     message("-- Will not link with LAPACK.")
+endif()
+
+#--------------------- MAGMA ---------------------
+if(TPL_ENABLE_MAGMALIB)  ## want to use MAGMA
+    set(MAGMA_FOUND TRUE)
+endif()
+
+if(MAGMA_FOUND)
+    message("-- Using TPL_MAGMA_LIBRARIES='${TPL_MAGMA_LIBRARIES}'")
+    set(MAGMA_LIB ${TPL_MAGMA_LIBRARIES})
+    # fix up MAGMA library name
+    string (REPLACE ";" " " MAGMA_LIB_STR "${MAGMA_LIB}")
+    set(MAGMA_LIB_EXPORT ${MAGMA_LIB_STR})
+    set(HAVE_MAGMA TRUE)
+else()
+    message("-- Will not link with MAGMA.")
 endif()
 
 #--------------------- ParMETIS ---------------------
@@ -562,12 +600,15 @@ endif()
 ######################################################################
 
 include_directories(${CMAKE_BINARY_DIR}/SRC) # For superlu_dist_config.h
-# include_directories(${CMAKE_SOURCE_DIR}/SRC)
+include_directories(${CMAKE_SOURCE_DIR}/SRC/include)
 if (TPL_PARMETIS_INCLUDE_DIRS)
   include_directories(${TPL_PARMETIS_INCLUDE_DIRS})  ## parmetis
 endif ()
 if (TPL_COMBBLAS_INCLUDE_DIRS)
   include_directories(${TPL_COMBBLAS_INCLUDE_DIRS})  ## CombBLAS
+endif ()
+if (TPL_MAGMA_INCLUDE_DIRS)
+  include_directories(${TPL_MAGMA_INCLUDE_DIRS})  ## MAGMA
 endif ()
 include_directories(${MPI_C_INCLUDE_PATH})
 
@@ -618,11 +659,10 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/superlu_dist.pc
 # configure_file(${CMAKE_SOURCE_DIR}/make.inc.in ${CMAKE_BINARY_DIR}/make.inc)
 configure_file(${SuperLU_DIST_SOURCE_DIR}/make.inc.in ${SuperLU_DIST_SOURCE_DIR}/make.inc)
 
-configure_file(${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h.in ${SuperLU_DIST_BINARY_DIR}/SRC/superlu_dist_config.h)
-configure_file(${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h.in ${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h)
+#configure_file(${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h.in ${SuperLU_DIST_BINARY_DIR}/SRC/superlu_dist_config.h)
+configure_file(${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h.in ${SuperLU_DIST_SOURCE_DIR}/SRC/include/superlu_dist_config.h)
 
 # Following is to configure a file for FORTRAN code
 configure_file(${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h.in ${SuperLU_DIST_BINARY_DIR}/FORTRAN/superlu_dist_config.h)
-
 
 #message("MPI_Fortran_LINK_FLAGS '${MPI_Fortran_LINK_FLAGS}'")

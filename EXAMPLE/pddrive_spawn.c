@@ -14,7 +14,7 @@ at the top-level directory.
  * \brief Driver program for PDGSSVX example
  *
  * <pre>
- * -- Distributed SuperLU routine (version 6.1) --
+ * -- Distributed SuperLU routine (version 9.0) --
  * Lawrence Berkeley National Lab, Univ. of California Berkeley.
  * November 1, 2007
  * December 6, 2018
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 		result[1] = total * 1e-6;     
 		if (!iam) {
 			printf("returning data:\n"
-		   "    Factor time :        %8.2f\n    Total MEM : %8.2f\n",
+		   "    Factor time :        %10.4f\n    Total MEM : %10.4f\n",
 		   stat.utime[FACT], total * 1e-6);
 			printf("**************************************************\n");
 			fflush(stdout);

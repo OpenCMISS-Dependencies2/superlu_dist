@@ -13,7 +13,7 @@
 module load cmake/3.24.3
 
 cmake .. \
-  -DCMAKE_C_FLAGS="-DGPU_SOLVE -std=c11 -DPRNTlevel=1 -DPROFlevel=0 -DDEBUGlevel=0 -DAdd_" \
+  -DCMAKE_C_FLAGS="  -std=c11 -DPRNTlevel=1 -DPROFlevel=0 -DDEBUGlevel=0 -DAdd_" \
   -DCMAKE_CXX_COMPILER=CC \
   -DCMAKE_C_COMPILER=cc \
   -DCMAKE_Fortran_COMPILER=ftn \
@@ -32,13 +32,14 @@ cmake .. \
   -DTPL_PARMETIS_INCLUDE_DIRS="/global/cfs/cdirs/m3894/lib/PrgEnv-gnu/parmetis-4.0.3/include;/global/cfs/cdirs/m3894/lib/PrgEnv-gnu/parmetis-4.0.3/metis/include" \
   -DTPL_PARMETIS_LIBRARIES="/global/cfs/cdirs/m3894/lib/PrgEnv-gnu/parmetis-4.0.3/build/Linux-x86_64/libparmetis/libparmetis.so;/global/cfs/cdirs/m3894/lib/PrgEnv-gnu/parmetis-4.0.3/build/Linux-x86_64/libmetis/libmetis.so" \
   -DTPL_ENABLE_COMBBLASLIB=OFF \
+  -DTPL_ENABLE_NVSHMEM=OFF \
   -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
   -DMPIEXEC_NUMPROC_FLAG=-n \
   -DMPIEXEC_EXECUTABLE=/usr/bin/srun \
   -DMPIEXEC_MAX_NUMPROCS=16
-     
-make pddrive
-make pddrive3d
+
+make pddrive -j16
+make pddrive3d -j16
 make f_pddrive
 
-# -DTPL_BLAS_LIBRARIES=/global/cfs/cdirs/m3894/ptlin/tpl/amd_blis/install/amd_blis-20211021-n9-gcc9.3.0/lib/libblis.a \
+## -DTPL_BLAS_LIBRARIES=/global/cfs/cdirs/m3894/ptlin/tpl/amd_blis/install/amd_blis-20211021-n9-gcc9.3.0/lib/libblis.a \
