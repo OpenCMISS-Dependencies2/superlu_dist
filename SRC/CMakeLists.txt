@@ -283,7 +283,6 @@ else()
   endif()
 endif()
 
-
 target_sources(superlu_dist PRIVATE ${sources} ${HEADERS})
 set(targets superlu_dist)
 target_compile_features(superlu_dist PUBLIC c_std_99)
@@ -301,24 +300,27 @@ if (NOT MSVC)
   list(APPEND superlu_dist_libs m)
 endif ()
 
+message(STATUS "superlu_dist_libs = '${superlu_dist_libs}'.")
+
 foreach(target ${targets})
-    target_link_libraries(${target} ${superlu_dist_libs})
-    if (HAVE_COMBBLAS)
-        set_target_properties(${target} PROPERTIES
-                              CUDA_SEPARABLE_COMPILATION ON
-							  OUTPUT_NAME superlu_dist
-                              VERSION ${PROJECT_VERSION}
-                              SOVERSION ${VERSION_MAJOR}
-			      LINKER_LANGUAGE CXX
-			      )
-    else()
-        set_target_properties(${target} PROPERTIES
-		                      CUDA_SEPARABLE_COMPILATION ON
-                              OUTPUT_NAME superlu_dist
-                              VERSION ${PROJECT_VERSION}
-                              SOVERSION ${VERSION_MAJOR}
-			      )
-    endif()
+  target_link_libraries(${target} ${superlu_dist_libs})
+  target_link_libraries(${target} ParMETIS::ParMETIS)
+  if (HAVE_COMBBLAS)
+    set_target_properties(${target} PROPERTIES
+      CUDA_SEPARABLE_COMPILATION ON
+      OUTPUT_NAME superlu_dist
+      VERSION ${PROJECT_VERSION}
+      SOVERSION ${VERSION_MAJOR}
+      LINKER_LANGUAGE CXX
+    )
+  else()
+    set_target_properties(${target} PROPERTIES
+      CUDA_SEPARABLE_COMPILATION ON
+      OUTPUT_NAME superlu_dist
+      VERSION ${PROJECT_VERSION}
+      SOVERSION ${VERSION_MAJOR}
+    )
+  endif()
 endforeach(target)
 
 # Add CUDA runtime library and CUBLAS library
@@ -352,12 +354,43 @@ endif()
 include(GNUInstallDirs)
 
 install(TARGETS ${targets}
-# DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
-    LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
-    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
+  EXPORT superlu_distTargets
+  RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
+  LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
+  ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
 )
 install(FILES ${headers}
-# DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  superlu_distConfigVersion.cmake
+  VERSION ${PACKAGE_VERSION}
+  COMPATIBILITY SameMajorVersion
+  )
+#  VERSION ${PROJECT_VERSION}
+
+install(EXPORT superlu_distTargets
+  FILE superlu_distTargets.cmake
+  NAMESPACE superlu_dist::
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/superlu_dist"
+  )
+
+configure_package_config_file(
+  superlu_distConfig.cmake.in superlu_distConfig.cmake
+  INSTALL_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/superlu_distConfig.cmake"
+  )
+install(
+  FILES
+      "${CMAKE_CURRENT_BINARY_DIR}/superlu_distConfig.cmake"
+      "${CMAKE_CURRENT_BINARY_DIR}/superlu_distConfigVersion.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/superlu_dist"
+  )
+
+export(EXPORT superlu_distTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/superlu_distTargets.cmake"
+  NAMESPACE superlu_dist::
+  )
+
+export(PACKAGE superlu_dist)

@@ -10,16 +10,16 @@
 #define HAVE_PARMETIS TRUE
 
 /* Enable colamd */
-/* #undef HAVE_COLAMD */
+#define HAVE_COLAMD TRUE
 
 /* Enable LAPACK */
-/* #undef SLU_HAVE_LAPACK */
+#define SLU_HAVE_LAPACK TRUE
 
 /* Enable CombBLAS */
 /* #undef HAVE_COMBBLAS */
 
 /* enable 64bit index mode */
-#define XSDK_INDEX_SIZE 64
+/* #undef XSDK_INDEX_SIZE */
 
 #if defined(XSDK_INDEX_SIZE) && (XSDK_INDEX_SIZE == 64)
 #define _LONGINT 1
