@@ -561,8 +561,6 @@ psgssvx(superlu_dist_options_t *options, SuperMatrix *A,
     double   dmin, dsum, dprod;
 #endif
 
-	LUstruct->dt = 's';
-
     /* Structures needed for parallel symbolic factorization */
     int_t *sizes, *fstVtxSep, parSymbFact;
     int   noDomains, nprocs_num;
