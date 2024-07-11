@@ -10,10 +10,10 @@
 /* #undef HAVE_HIP */
 
 /* Enable parmetis */
-#define HAVE_PARMETIS TRUE
+/* #undef HAVE_PARMETIS */
 
 /* Enable colamd */
-#define HAVE_COLAMD TRUE
+/* #undef HAVE_COLAMD */
 
 /* Enable LAPACK */
 #define SLU_HAVE_LAPACK TRUE

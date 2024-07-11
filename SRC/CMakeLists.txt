@@ -407,7 +407,9 @@ message(STATUS "superlu_dist_libs = '${superlu_dist_libs}'.")
 
 foreach(target ${targets})
   target_link_libraries(${target} ${superlu_dist_libs})
-  target_link_libraries(${target} ParMETIS::ParMETIS)
+  if(HAVE_PARMETIS)
+    target_link_libraries(${target} ParMETIS::ParMETIS)
+  endif()
   if (HAVE_COMBBLAS)
     set_target_properties(${target} PROPERTIES
       CUDA_SEPARABLE_COMPILATION ON
