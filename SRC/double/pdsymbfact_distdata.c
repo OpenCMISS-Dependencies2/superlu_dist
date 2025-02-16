@@ -784,8 +784,8 @@ ddist_A(SuperMatrix *A, dScalePermstruct_t *ScalePermstruct,
 {
   int    iam, p, procs;
   NRformat_loc *Astore;
-  int_t  *perm_r; /* row permutation vector */
-  int_t  *perm_c; /* column permutation vector */
+  int  *perm_r; /* row permutation vector */
+  int  *perm_c; /* column permutation vector */
   int_t  i, it, irow, fst_row, j, jcol, k, gbi, gbj, n, m_loc, jsize, isize;
   int_t  nsupers, nsupers_i, nsupers_j;
   int_t  nnz_loc, nnz_loc_ainf, nnz_loc_asup;    /* number of local nonzeros */
@@ -3309,6 +3309,21 @@ double *dense, *dense_col; /* SPA */
   /* Find the maximum buffer size. */
   MPI_Allreduce(mybufmax, Llu->bufmax, NBUFFERS, mpi_int_t,
 		MPI_MAX, grid->comm);
+
+
+  if ( options->Fact != SamePattern_SameRowPerm ) {
+    // /* Flatten L metadata into one buffer. */
+    pdflatten_LDATA(options, n, LUstruct, grid);
+
+      // /* Compute communication structure for trisolve. */ 
+    int* supernodeMask = int32Malloc_dist(nsupers);
+    for(int ii=0; ii<nsupers; ii++)
+      supernodeMask[ii]=1;
+    dtrs_compute_communication_structure(options, n, LUstruct,
+          supernodeMask, grid);
+    SUPERLU_FREE(supernodeMask);
+  }
+
 
 #if ( DEBUGlevel>=1 )
   /* Memory allocated but not free'd:

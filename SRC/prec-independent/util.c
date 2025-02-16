@@ -165,7 +165,7 @@ void countnz_dist(const int_t n, int_t *xprune,
  * </pre>
  */
 int64_t
-fixupL_dist(const int_t n, const int_t *perm_r,
+fixupL_dist(const int_t n, const int *perm_r,
             Glu_persist_t *Glu_persist, Glu_freeable_t *Glu_freeable)
 {
     register int_t nsuper, fsupc, nextl, i, j, k, jstrt;
@@ -210,6 +210,7 @@ void set_default_options_dist(superlu_dist_options_t *options)
     options->Fact = DOFACT;
     options->Equil = YES;
     options->ILU_level = SLU_EMPTY;
+    options->UserDefineSupernode = NO; /* detect supernodes internally */
     options->ParSymbFact = NO;
 #ifdef HAVE_PARMETIS
     options->ColPerm = METIS_AT_PLUS_A;
@@ -256,6 +257,7 @@ void print_options_dist(superlu_dist_options_t *options)
     printf("**    Fact                      : %4d\n", options->Fact);
     printf("**    Equil                     : %4d\n", options->Equil);
     printf("**    DiagInv                   : %4d\n", options->DiagInv);
+    printf("**    UserDefineSupernode       : %4d\n", options->UserDefineSupernode);
     printf("**    ParSymbFact               : %4d\n", options->ParSymbFact);
     printf("**    ColPerm                   : %4d\n", options->ColPerm);
     printf("**    RowPerm                   : %4d\n", options->RowPerm);
@@ -309,8 +311,8 @@ void print_sp_ienv_dist(superlu_dist_options_t *options)
     printf("**    estimated fill ratio       : %d\n", sp_ienv_dist(6, options));
     printf("**    min GEMM m*k*n to use GPU  : %d\n", sp_ienv_dist(7, options));
     printf(".. parallel environment:\n");
-    printf("**    OpenMP threads            : %4d\n", num_threads);
-    printf("**    GPU enable?               : %4d\n", gpu_enabled);
+    printf("**    OpenMP threads             : %4d\n", num_threads);
+    printf("**    GPU enabled?               : %4d\n", gpu_enabled);
     printf("**************************************************\n");
 }
 
@@ -549,11 +551,10 @@ void PStatFree(SuperLUStat_t *stat)
 
 /*! \brief Fills an integer array with a given value.
  */
-void ifill_dist(int_t *a, int_t alen, int_t ival)
+void ifill_dist(int *a, int alen, int ival)
 {
-    register int_t i;
-    for (i = 0; i < alen; i++)
-        a[i] = ival;
+    register int i;
+    for (i = 0; i < alen; i++) a[i] = ival;
 }
 
 void get_diag_procs(int_t n, Glu_persist_t *Glu_persist, gridinfo_t *grid,
@@ -607,7 +608,7 @@ void super_stats_dist(int_t nsuper, int_t *xsup)
 {
     register int nsup1 = 0;
     int_t i, isize, whichb, bl, bh;
-    int_t bucket[NBUCKS];
+    int bucket[NBUCKS];
 
     max_sup_size = 0;
 
@@ -641,9 +642,9 @@ void super_stats_dist(int_t nsuper, int_t *xsup)
     {
         bl = (float)i * max_sup_size / NBUCKS;
         bh = (float)(i + 1) * max_sup_size / NBUCKS;
-        printf("\tsnode: %d-%d\t\t%d\n", (int)bl + 1, (int)bh, (int)bucket[i]);
+        printf("\tsnode: %d-%d\t\t%d\n", (int)bl + 1, (int)bh, bucket[i]);
     }
-}
+} /* end super_stats_dist */
 
 /*! \brief Check whether repfnz[] == SLU_EMPTY after reset.
  */
@@ -672,7 +673,7 @@ void PrintInt10(char *name, int_t len, int_t *x)
             printf("\n\t[" IFMT "-" IFMT "]", i, i + 9);
         printf(IFMT, x[i]);
     }
-    printf("\n");
+    printf("\n"); fflush(stdout);
 }
 
 void PrintInt32(char *name, int len, int *x)
@@ -686,7 +687,7 @@ void PrintInt32(char *name, int len, int *x)
             printf("\n\t[%2d-%2d]", i, i + 9);
         printf("%6d", x[i]);
     }
-    printf("\n");
+    printf("\n"); fflush(stdout);
 }
 
 int file_PrintInt10(FILE *fp, char *name, int_t len, int_t *x)

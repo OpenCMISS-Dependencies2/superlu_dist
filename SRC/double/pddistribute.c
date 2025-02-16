@@ -70,8 +70,8 @@ dReDistribute_A(SuperMatrix *A, dScalePermstruct_t *ScalePermstruct,
                 double *a[])
 {
     NRformat_loc *Astore;
-    int_t  *perm_r; /* row permutation vector */
-    int_t  *perm_c; /* column permutation vector */
+    int  *perm_r; /* row permutation vector */
+    int  *perm_c; /* column permutation vector */
     int_t  i, irow, fst_row, j, jcol, k, gbi, gbj, n, m_loc, jsize,nnz_tot;
     int_t  nnz_loc;    /* number of local nonzeros */
     int_t  SendCnt; /* number of remote nonzeros to be sent */
@@ -2317,6 +2317,22 @@ if ( !iam) printf(".. Construct Reduce tree for U: %.2f\t\n", t);
     SUPERLU_FREE(xa);
 	LUstruct->trf3Dpart=NULL;
 
+
+	if ( options->Fact != SamePattern_SameRowPerm ) {
+		// /* Flatten L metadata into one buffer. */
+		pdflatten_LDATA(options, n, LUstruct, grid);
+
+		// /* Compute communication structure for trisolve. */ 
+		int* supernodeMask = int32Malloc_dist(nsupers);
+		for(int ii=0; ii<nsupers; ii++)
+			supernodeMask[ii]=1;
+		dtrs_compute_communication_structure(options, n, LUstruct,
+					supernodeMask, grid);
+		SUPERLU_FREE(supernodeMask);
+	}
+
+
+
 #if ( DEBUGlevel>=1 )
     /* Memory allocated but not freed:
        ilsum, fmod, fsendx_plist, bmod, bsendx_plist  */
@@ -2327,6 +2343,7 @@ if ( !iam) printf(".. Construct Reduce tree for U: %.2f\t\n", t);
 
 } /* PDDISTRIBUTE */
 
+#if 0
 float
 pddistribute_allgrid(superlu_dist_options_t *options, int_t n, SuperMatrix *A,
 	     dScalePermstruct_t *ScalePermstruct,
@@ -3977,3 +3994,4 @@ pddistribute_allgrid_index_only(superlu_dist_options_t *options, int_t n, SuperM
     return (mem_use);
 
 } /* PDDISTRIBUTE_ALLGRID_INDEX_ONLY */
+#endif

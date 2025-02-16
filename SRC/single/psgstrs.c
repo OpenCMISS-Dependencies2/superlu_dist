@@ -171,7 +171,7 @@ psReDistribute_B_to_X(float *B, int_t m_loc, int nrhs, int_t ldb,
     int  *SendCnt, *SendCnt_nrhs, *RecvCnt, *RecvCnt_nrhs;
     int  *sdispls, *sdispls_nrhs, *rdispls, *rdispls_nrhs;
     int  *ptr_to_ibuf, *ptr_to_dbuf;
-    int_t  *perm_r, *perm_c; /* row and column permutation vectors */
+    int  *perm_r, *perm_c; /* row and column permutation vectors */
     int_t  *send_ibuf, *recv_ibuf;
     float *send_dbuf, *recv_dbuf;
     int_t  *xsup, *supno;
@@ -1008,8 +1008,8 @@ psgstrs(superlu_dist_options_t *options, int_t n,
 	gpuStream_t sid=0;
 	int gid=0;
 	gridinfo_t *d_grid = NULL;
-	double *d_x = NULL;
-	double *d_lsum = NULL;
+	float *d_x = NULL;
+	float *d_lsum = NULL;
     int  *d_bmod = NULL;
     int  *d_fmod = NULL;
 #endif

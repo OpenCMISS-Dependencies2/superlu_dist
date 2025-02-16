@@ -192,6 +192,30 @@ void sPrint_CompCol_Matrix_dist(SuperMatrix *A)
     printf("\nend CompCol matrix.\n");
 }
 
+void sPrint_CompCol_triplet(SuperMatrix *A)
+{
+    NCformat     *Astore = (NCformat *) A->Store;
+    register int i, j;
+    float       *dp;
+    int_t *colptr, *rowind;
+
+    int n = A->nrow;
+    int_t nnz = Astore->nnz;
+    
+    printf("\nTriplet matrix:\n");
+    printf("nrow %d, ncol %lld, nnz %lld\n", n, (long long) A->ncol, nnz);
+    dp = (float *) Astore->nzval;
+    colptr = Astore->colptr;
+    rowind = Astore->rowind;
+    
+    for (i = 0; i < A->ncol; ++i) {
+	for (j = colptr[i]; j < colptr[i+1]; ++j) {
+	    printf("%8d %8d\t%f\n", rowind[j], i, dp[j]);
+	}
+    }
+    printf("\nend triplet matrix\n ");
+}
+
 void sPrint_Dense_Matrix_dist(SuperMatrix *A)
 {
     DNformat     *Astore;
@@ -438,9 +462,9 @@ void sScalePermstructInit(const int_t m, const int_t n,
                          sScalePermstruct_t *ScalePermstruct)
 {
     ScalePermstruct->DiagScale = NOEQUIL;
-    if ( !(ScalePermstruct->perm_r = intMalloc_dist(m)) )
+    if ( !(ScalePermstruct->perm_r = int32Malloc_dist(m)) )
         ABORT("Malloc fails for perm_r[].");
-    if ( !(ScalePermstruct->perm_c = intMalloc_dist(n)) )
+    if ( !(ScalePermstruct->perm_c = int32Malloc_dist(n)) )
         ABORT("Malloc fails for perm_c[].");
 }
 

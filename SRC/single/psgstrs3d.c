@@ -151,8 +151,7 @@ float *sready_x, *sready_lsum;
 // #endif
 
 int strs_compute_communication_structure(superlu_dist_options_t *options, int_t n, sLUstruct_t * LUstruct,
-                           sScalePermstruct_t * ScalePermstruct,
-                           int* supernodeMask, gridinfo_t *grid, SuperLUStat_t * stat)
+                           int* supernodeMask, gridinfo_t *grid)
 {
     Glu_persist_t *Glu_persist = LUstruct->Glu_persist;
     int kr,kc,nlb,nub;
@@ -6272,7 +6271,7 @@ psReDistribute3d_B_to_X (float *B, int_t m_loc, int nrhs, int_t ldb,
     int *SendCnt, *SendCnt_nrhs, *RecvCnt, *RecvCnt_nrhs;
     int *sdispls, *sdispls_nrhs, *rdispls, *rdispls_nrhs;
     int *ptr_to_ibuf, *ptr_to_dbuf;
-    int_t *perm_r, *perm_c;     /* row and column permutation vectors */
+    int *perm_r, *perm_c;     /* row and column permutation vectors */
     int_t *send_ibuf, *recv_ibuf;
     float *send_dbuf, *recv_dbuf;
     int_t *xsup, *supno;

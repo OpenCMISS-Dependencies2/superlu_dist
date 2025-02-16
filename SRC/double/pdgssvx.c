@@ -531,8 +531,8 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
     fact_t  Fact;
     double *a;
     int_t   *colptr, *rowind;
-    int_t   *perm_r; /* row permutations from partial pivoting */
-    int_t   *perm_c; /* column permutation vector */
+    int   *perm_r; /* row permutations from partial pivoting */
+    int   *perm_c; /* column permutation vector */
     int_t   *etree;  /* elimination tree */
     int_t   *rowptr, *colind;  /* Local A in NR*/
     int_t   nnz_loc, nnz;
@@ -812,7 +812,8 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 
                         MPI_Bcast( &iinfo, 1, MPI_INT, 0, grid->comm );
 		        if ( iinfo == 0 ) {
-		            MPI_Bcast( perm_r, m, mpi_int_t, 0, grid->comm );
+			    //MPI_Bcast( perm_r, m, mpi_int_t, 0, grid->comm );
+			    MPI_Bcast( perm_r, m, MPI_INT, 0, grid->comm );
 		            if ( job == 5 && Equil ) {
 		                MPI_Bcast( R1, m, MPI_DOUBLE, 0, grid->comm );
 		                MPI_Bcast( C1, n, MPI_DOUBLE, 0, grid->comm );
@@ -821,7 +822,8 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 	            } else {
 		        MPI_Bcast( &iinfo, 1, MPI_INT, 0, grid->comm );
 			if ( iinfo == 0 ) {
-		            MPI_Bcast( perm_r, m, mpi_int_t, 0, grid->comm );
+		            //MPI_Bcast( perm_r, m, mpi_int_t, 0, grid->comm );
+		            MPI_Bcast( perm_r, m, MPI_INT, 0, grid->comm );
 		            if ( job == 5 && Equil ) {
 		                MPI_Bcast( R1, m, MPI_DOUBLE, 0, grid->comm );
 		                MPI_Bcast( C1, n, MPI_DOUBLE, 0, grid->comm );
@@ -934,7 +936,7 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
         }
 
 #if ( DEBUGlevel>=2 )
-        if ( !iam ) PrintInt10("perm_r",  m, perm_r);
+        if ( !iam ) PrintInt32("perm_r",  m, perm_r);
 #endif
     } /* end if (!factored) */
 
@@ -1124,9 +1126,10 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 	if (symb_comm != MPI_COMM_NULL) MPI_Comm_free (&symb_comm);
 
 	/* Distribute entries of A into L & U data structures. */
-	//if (parSymbFact == NO || ???? Fact == SamePattern_SameRowPerm) {
-	if ( parSymbFact == NO ) {
-	    /* CASE OF SERIAL SYMBOLIC */
+	if (parSymbFact == NO || Fact == SamePattern_SameRowPerm) {
+	//if ( parSymbFact == NO ) {
+	    /* Case of serial symbolic,
+	       or parallel symbolic and reuse L&U structure, only redistribute A */
   	    /* Apply column permutation to the original distributed A */
 	    for (j = 0; j < nnz_loc; ++j) colind[j] = perm_c[colind[j]];
 
@@ -1163,10 +1166,6 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 
 	/*if (!iam) printf ("\tDISTRIBUTE time  %8.2f\n", stat->utime[DIST]);*/
 
-	/* Flatten L metadata into one buffer. */
-	if ( Fact != SamePattern_SameRowPerm ) {
-		pdflatten_LDATA(options, n, LUstruct, grid, stat);
-	}
 
 	/* Perform numerical factorization in parallel. */
 	t = SuperLU_timer_();
@@ -1360,7 +1359,7 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 	    int buffer_peak_rank = global_struct.rank;
 	    float buffer_peak = global_struct.val*1e-6;
 
-            if ( iam==0 ) {
+            if ( iam == 0 ) {
                 printf("** Total highmark (MB):\n"
 		       "    Sum-of-all : %8.2f | Avg : %8.2f  | Max : %8.2f\n",
 		       avg * 1e-6,
@@ -1387,7 +1386,7 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 
 
 
-    /* nvshmem related. The nvshmem_malloc has to be called before dtrs_compute_communication_structure, otherwise solve is much slower*/
+    /* nvshmem related */
     #ifdef HAVE_NVSHMEM
 		nsupers = Glu_persist->supno[n-1] + 1;
 		int nc = CEILING( nsupers, grid->npcol);
@@ -1405,16 +1404,6 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 
 		}
 	#endif
-
-	if ( options->Fact != SamePattern_SameRowPerm) {
-		nsupers = Glu_persist->supno[n-1] + 1;
-		int* supernodeMask = int32Malloc_dist(nsupers);
-		for(int ii=0; ii<nsupers; ii++)
-			supernodeMask[ii]=1;
-		dtrs_compute_communication_structure(options, n, LUstruct,
-						ScalePermstruct, supernodeMask, grid, stat);
-		SUPERLU_FREE(supernodeMask);
-	}
 
     } /* end if (!factored) */
 
@@ -2516,7 +2505,7 @@ nsupers_i = CEILING( nsupers, grid->nprow ); /* Number of local block rows */
 
 
 int pdflatten_LDATA(superlu_dist_options_t *options, int_t n, dLUstruct_t * LUstruct,
-                           gridinfo_t *grid, SuperLUStat_t * stat)
+                           gridinfo_t *grid)
 {
     Glu_persist_t *Glu_persist = LUstruct->Glu_persist;
     int kr,kc,nlb,nub;

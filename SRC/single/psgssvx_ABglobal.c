@@ -492,8 +492,8 @@ psgssvx_ABglobal(superlu_dist_options_t *options, SuperMatrix *A,
 	      structures are not used.                                  */
     fact_t   Fact;
     float   *a;
-    int_t    *perm_r; /* row permutations from partial pivoting */
-    int_t    *perm_c; /* column permutation vector */
+    int    *perm_r; /* row permutations from partial pivoting */
+    int    *perm_c; /* column permutation vector */
     int_t    *etree;  /* elimination tree */
     int_t    *colptr, *rowind;
     int_t    Equil, factored, job, notran, colequ, rowequ;
@@ -722,7 +722,7 @@ psgssvx_ABglobal(superlu_dist_options_t *options, SuperMatrix *A,
 
                 MPI_Bcast( &iinfo, 1, mpi_int_t, 0, grid->comm );
 		if ( iinfo == 0 ) {
-		    MPI_Bcast( perm_r, m, mpi_int_t, 0, grid->comm );
+		    MPI_Bcast( perm_r, m, MPI_INT, 0, grid->comm );
 		    if ( job == 5 && Equil ) {
 		       MPI_Bcast( R1, m, MPI_FLOAT, 0, grid->comm );
 		       MPI_Bcast( C1, n, MPI_FLOAT, 0, grid->comm );
@@ -731,7 +731,7 @@ psgssvx_ABglobal(superlu_dist_options_t *options, SuperMatrix *A,
 	    } else {
 		MPI_Bcast( &iinfo, 1, mpi_int_t, 0, grid->comm );
 		if ( iinfo == 0 ) {
-		   MPI_Bcast( perm_r, m, mpi_int_t, 0, grid->comm );
+		   MPI_Bcast( perm_r, m, MPI_INT, 0, grid->comm );
 		   if ( job == 5 && Equil ) {
 		      MPI_Bcast( R1, m, MPI_FLOAT, 0, grid->comm );
 		      MPI_Bcast( C1, n, MPI_FLOAT, 0, grid->comm );
@@ -919,11 +919,6 @@ psgssvx_ABglobal(superlu_dist_options_t *options, SuperMatrix *A,
 	dist_mem_use = sdistribute(options, n, &AC, Glu_freeable, LUstruct, grid);
 	stat->utime[DIST] = SuperLU_timer_() - t;
 
-	/* Flatten L metadata into one buffer. */
-	if ( Fact != SamePattern_SameRowPerm ) {
-		psflatten_LDATA(options, n, LUstruct, grid, stat);
-	}
-
 	/* Deallocate storage used in symbolic factor. */
 	if ( Fact != SamePattern_SameRowPerm ) {
 	    iinfo = symbfact_SubFree(Glu_freeable);
@@ -936,7 +931,7 @@ psgssvx_ABglobal(superlu_dist_options_t *options, SuperMatrix *A,
 	stat->utime[FACT] = SuperLU_timer_() - t;
 
 
-    /* nvshmem related. The nvshmem_malloc has to be called before strs_compute_communication_structure, otherwise solve is much slower*/
+    /* nvshmem related.*/
     int nsupers = Glu_persist->supno[n-1] + 1;
 	#ifdef HAVE_NVSHMEM
 		int nc = CEILING( nsupers, grid->npcol);
@@ -950,23 +945,9 @@ psgssvx_ABglobal(superlu_dist_options_t *options, SuperMatrix *A,
 		int ready_lsum_size = 2*maxrecvsz*nr;
 		if (get_acc_solve()){
 		nv_init_wrapper(grid->comm);
-
 		sprepare_multiGPU_buffers(flag_bc_size,flag_rd_size,ready_x_size,ready_lsum_size,my_flag_bc_size,my_flag_rd_size);
-
-
 		}
 	#endif
-
-	if ( Fact != SamePattern_SameRowPerm ) {
-
-		int* supernodeMask = int32Malloc_dist(nsupers);
-		for(int ii=0; ii<nsupers; ii++)
-			supernodeMask[ii]=1;
-		strs_compute_communication_structure(options, n, LUstruct,
-						ScalePermstruct, supernodeMask, grid, stat);
-		SUPERLU_FREE(supernodeMask);
-	}
-
 
 
 #if ( PRNTlevel>=1 )

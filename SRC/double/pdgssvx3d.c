@@ -544,8 +544,8 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
     fact_t Fact;
     double *a;
     int_t *colptr, *rowind;
-    int_t *perm_r;			/* row permutations from partial pivoting */
-    int_t *perm_c;			/* column permutation vector */
+    int *perm_r;			/* row permutations from partial pivoting */
+    int *perm_c;			/* column permutation vector */
     int_t *etree;			/* elimination tree */
     int_t *rowptr, *colind; /* Local A in NR */
     int colequ, Equil, factored, job, notran, rowequ, need_value;
@@ -574,7 +574,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
        gpu3dVersion = atoi(getenv("GPU3DVERSION"));
     }
 
-    LUgpu_Handle LUgpu;
+
 #endif
 
     LUstruct->dt = 'd';
@@ -926,7 +926,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 				distribution routine. */
 			t = SuperLU_timer_();
 
-			dist_mem_use = pddistribute3d_Yang(options, n, A, ScalePermstruct,
+			dist_mem_use = pddistribute3d(options, n, A, ScalePermstruct,
 											Glu_freeable, LUstruct, grid3d);
 			stat->utime[DIST] = SuperLU_timer_() - t;
 
@@ -956,11 +956,6 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 
 		}
 
-		/* Flatten L metadata into one buffer. */
-		if ( Fact != SamePattern_SameRowPerm ) {
-			pdflatten_LDATA(options, n, LUstruct, grid, stat);
-		}
-
 
 		if(Fact != SamePattern_SameRowPerm){
 			// checkDist3DLUStruct(LUstruct, grid3d);
@@ -981,7 +976,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 
 		/* Perform numerical factorization in parallel on all process layers.*/
 
-		/* nvshmem related. The nvshmem_malloc has to be called before dtrs_compute_communication_structure, otherwise solve is much slower*/
+		/* nvshmem related. */ // TODO: Does this work in iterative refinement with rhs>1? Should we associate these data with SOLVEstruct?
 		#ifdef HAVE_NVSHMEM
 			int nc = CEILING( nsupers, grid->npcol);
 			int nr = CEILING( nsupers, grid->nprow);
@@ -993,7 +988,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 			int ready_x_size = maxrecvsz*nc;
 			int ready_lsum_size = 2*maxrecvsz*nr;
 			if (get_acc_solve()){
-			nv_init_wrapper(grid->comm);
+			nv_init_wrapper(grid->comm);	
 		    dprepare_multiGPU_buffers(flag_bc_size,flag_rd_size,ready_x_size,ready_lsum_size,my_flag_bc_size,my_flag_rd_size);
 			}
 		#endif
@@ -1031,8 +1026,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 			
 			if(options->batchCount == 0)
 			{
-#define TEMPLATED_VERSION
-#ifdef TEMPLATED_VERSION
+#ifdef HAVE_CUDA				
 dLUgpu_Handle dLUgpu = dCreateLUgpuHandle(nsupers, ldt, trf3Dpartition, LUstruct, grid3d,
 						  SCT, options, stat, thresh, info);
 
@@ -1041,19 +1035,7 @@ dLUgpu_Handle dLUgpu = dCreateLUgpuHandle(nsupers, ldt, trf3Dpartition, LUstruct
 
 			dCopyLUGPU2Host(dLUgpu, LUstruct);
 			dDestroyLUgpuHandle(dLUgpu);
-		    //TODO: dCreateLUgpuHandle,pdgstrf3d_LUpackedInterface,dCopyLUGPU2Host,dDestroyLUgpuHandle haven't been created
-#else // non-templated version (not used anymore)
-			/* call constructor in C++ code */
-			LUgpu = dCreateLUgpuHandle(nsupers, ldt, trf3Dpartition, LUstruct, grid3d,
-						  SCT, options, stat, thresh, info);
-
-			/* call pdgstrf3d() in C++ code */
-			pdgstrf3d_LUpackedInterface(LUgpu);
-
-			copyLUGPU2Host(LUgpu, LUstruct);
-			destroyLUgpuHandle(LUgpu);
-#endif /* end if TEMPLATED_VERSION */
-
+#endif
        	      	 } else { /* batched version */
 		 
 #ifdef HAVE_MAGMA
@@ -1113,19 +1095,7 @@ dLUgpu_Handle dLUgpu = dCreateLUgpuHandle(nsupers, ldt, trf3Dpartition, LUstruct
 			dbroadcastAncestor3d(trf3Dpartition, LUstruct, grid3d, SCT);
 		}
 
-		if ( options->Fact != SamePattern_SameRowPerm) {
-			if (get_new3dsolve() && Solve3D==true){
-				dtrs_compute_communication_structure(options, n, LUstruct,
-							ScalePermstruct, trf3Dpartition->supernodeMask, grid, stat);
-			}else{
-				int* supernodeMask = int32Malloc_dist(nsupers);
-				for(int ii=0; ii<nsupers; ii++)
-					supernodeMask[ii]=1;
-				dtrs_compute_communication_structure(options, n, LUstruct,
-							ScalePermstruct, supernodeMask, grid, stat);
-				SUPERLU_FREE(supernodeMask);
-			}
-		}
+
 
 
 		stat->utime[FACT] = SuperLU_timer_() - t;

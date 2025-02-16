@@ -77,8 +77,8 @@ typedef struct {
     DiagScale_t DiagScale;
     double *R;
     double *C;
-    int_t  *perm_r;
-    int_t  *perm_c;
+    int  *perm_r;
+    int  *perm_c;
 } zScalePermstruct_t;
 
 #if 0 // Sherry: move to superlu_defs.h
@@ -370,7 +370,7 @@ typedef struct {
 /*-- Data structure holding the information for the solution phase --*/
 typedef struct {
     int_t *row_to_proc;
-    int_t *inv_perm_c;
+    int *inv_perm_c;
     int_t num_diag_procs, *diag_procs, *diag_len;
     pzgsmv_comm_t *gsmv_comm; /* communication metadata for SpMV,
          	       		      required by IterRefine.          */
@@ -554,7 +554,7 @@ extern void    pzgsequ (SuperMatrix *, double *, double *, double *,
 extern double  pzlangs (char *, SuperMatrix *, gridinfo_t *);
 extern void    pzlaqgs (SuperMatrix *, double *, double *, double,
 			double, double, char *);
-extern int     pzPermute_Dense_Matrix(int_t, int_t, int_t [], int_t[],
+extern int     pzPermute_Dense_Matrix(int_t, int_t, int_t [], int perm[],
 				      doublecomplex [], int, doublecomplex [], int, int,
 				      gridinfo_t *);
 
@@ -589,19 +589,20 @@ extern void  pzgssvx(superlu_dist_options_t *, SuperMatrix *,
 		     int, int, gridinfo_t *, zLUstruct_t *,
 		     zSOLVEstruct_t *, double *, SuperLUStat_t *, int *);
 extern void  pzCompute_Diag_Inv(int_t, zLUstruct_t *,gridinfo_t *, SuperLUStat_t *, int *);
-extern int  zSolveInit(superlu_dist_options_t *, SuperMatrix *, int_t [], int_t [],
+extern int  zSolveInit(superlu_dist_options_t *, SuperMatrix *,
+                       int perm_r[], int perm_c[],
 		       int_t, zLUstruct_t *, gridinfo_t *, zSOLVEstruct_t *);
 extern void zSolveFinalize(superlu_dist_options_t *, zSOLVEstruct_t *);
 extern void zDestroy_A3d_gathered_on_2d(zSOLVEstruct_t *, gridinfo3d_t *);
 extern int_t pzgstrs_init(int_t, int_t, int_t, int_t,
-                          int_t [], int_t [], gridinfo_t *grid,
+                          int perm_r[], int perm_c[], gridinfo_t *grid,
 	                  Glu_persist_t *, zSOLVEstruct_t *);
 extern int_t pzgstrs_init_device_lsum_x(superlu_dist_options_t *, int_t , int_t , int_t , gridinfo_t *,
 	     zLUstruct_t *, zSOLVEstruct_t *, int*);
 extern int_t pzgstrs_delete_device_lsum_x(zSOLVEstruct_t *);
 extern void pxgstrs_finalize(pxgstrs_comm_t *);
 extern int  zldperm_dist(int, int, int_t, int_t [], int_t [],
-		    doublecomplex [], int_t *, double [], double []);
+		    doublecomplex [], int *perm, double [], double []);
 extern int  zstatic_schedule(superlu_dist_options_t *, int, int,
 		            zLUstruct_t *, gridinfo_t *, SuperLUStat_t *,
 			    int_t *, int_t *, int *);
@@ -772,8 +773,7 @@ extern int_t zleafForestForwardSolve3d(superlu_dist_options_t *options, int_t tr
 
 
 extern int ztrs_compute_communication_structure(superlu_dist_options_t *options, int_t n, zLUstruct_t * LUstruct,
-                           zScalePermstruct_t * ScalePermstruct,
-                           int* supernodeMask, gridinfo_t *grid, SuperLUStat_t * stat);
+                           int* supernodeMask, gridinfo_t *grid);
 extern int_t zreduceSolvedX_newsolve(int_t treeId, int_t sender, int_t receiver, doublecomplex* x, int nrhs,
                       ztrf3Dpartition_t*  trf3Dpartition, zLUstruct_t* LUstruct, gridinfo3d_t* grid3d, doublecomplex* recvbuf, xtrsTimer_t *xtrsTimer);
 
@@ -992,9 +992,6 @@ extern void zperform_row_permutation(superlu_dist_options_t *, fact_t Fact,
 	       gridinfo_t *, SuperMatrix *A, SuperMatrix *GA, SuperLUStat_t *,
 	       int job, int Equil, int *rowequ, int *colequ, int *iinfo);
 extern double zcomputeA_Norm(int notran, SuperMatrix *, gridinfo_t *);
-extern int ztrs_compute_communication_structure(superlu_dist_options_t *options,
-       int_t n, zLUstruct_t *, zScalePermstruct_t * ScalePermstruct,
-       int* supernodeMask, gridinfo_t *, SuperLUStat_t *);
 
 /* Distribute the data for numerical factorization */
 extern float zdist_psymbtonum(superlu_dist_options_t *, int_t, SuperMatrix *,
@@ -1010,6 +1007,7 @@ extern void  zPrintLblocks(int, int_t, gridinfo_t *, Glu_persist_t *,
 extern void  zPrintUblocks(int, int_t, gridinfo_t *, Glu_persist_t *,
 			   zLocalLU_t *);
 extern void  zPrint_CompCol_Matrix_dist(SuperMatrix *);
+extern void  zPrint_CompCol_triplet(SuperMatrix *);
 extern void  zPrint_Dense_Matrix_dist(SuperMatrix *);
 extern int   zPrint_CompRowLoc_Matrix_dist(SuperMatrix *);
 extern int   file_zPrint_CompRowLoc_Matrix_dist(FILE *fp, SuperMatrix *A);
@@ -1549,7 +1547,7 @@ extern int_t checkRecvLDiag(int_t k, commRequests_t *comReqs, gridinfo_t *, SCT_
 
 
 extern int pzflatten_LDATA(superlu_dist_options_t *options, int_t n, zLUstruct_t * LUstruct,
-                           gridinfo_t *grid, SuperLUStat_t * stat);
+                           gridinfo_t *grid);
 extern void pzconvert_flatten_skyline2UROWDATA(superlu_dist_options_t *, gridinfo_t *,
 	                 zLUstruct_t *, SuperLUStat_t *, int n);
 extern void pzconvertUROWDATA2skyline(superlu_dist_options_t *, gridinfo_t *,
@@ -1561,7 +1559,7 @@ zReDistribute_A(SuperMatrix *A, zScalePermstruct_t *ScalePermstruct,
                 gridinfo_t *grid, int_t *colptr[], int_t *rowind[],
                 doublecomplex *a[]);
 extern float
-pzdistribute3d_Yang(superlu_dist_options_t *options, int_t n, SuperMatrix *A,
+pzdistribute3d(superlu_dist_options_t *options, int_t n, SuperMatrix *A,
 	     zScalePermstruct_t *ScalePermstruct,
 	     Glu_freeable_t *Glu_freeable, zLUstruct_t *LUstruct,
 	     gridinfo3d_t *grid3d);

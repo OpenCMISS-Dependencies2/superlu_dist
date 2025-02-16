@@ -24,6 +24,9 @@ at the top-level directory.
  * File name:		pdtest.c
  * Purpose:             MAIN test program
  */
+ 
+#define _XOPEN_SOURCE // C99 standard extension to support putenv()
+
 #include <stdio.h>
 #include <stdlib.h>
 //#include <unistd.h>
@@ -35,8 +38,6 @@ at the top-level directory.
 #include <math.h>
 #include "superlu_dist_config.h"
 #include "superlu_ddefs.h"
-
-#define _XOPEN_SOURCE // C99 standard extension to support putenv()
 
 #define NTESTS 1 /*5*/      /* Number of test types */
 #define NTRAN  2

@@ -13,7 +13,7 @@ set(headers
     include/superlu_dist_config.h
     include/superlu_FortranCInterface.h
     include/oneside.h
-    CplusplusFactor/lupanels.hpp
+    # CplusplusFactor/lupanels.hpp
     CplusplusFactor/commWrapper.hpp
     CplusplusFactor/lupanels_GPU.cuh
     CplusplusFactor/batch_block_copy.h
@@ -34,7 +34,7 @@ set(headers
     CplusplusFactor/l_panels_impl.hpp
     CplusplusFactor/u_panels_impl.hpp
     CplusplusFactor/luAuxStructTemplated.hpp
-    CplusplusFactor/xlupanels.hpp
+    # CplusplusFactor/xlupanels.hpp
     CplusplusFactor/lu_common.hpp
     CplusplusFactor/xlupanels_GPU.cuh
     CplusplusFactor/schurCompUpdate_impl.cuh
@@ -176,12 +176,12 @@ if (TPL_ENABLE_CUDALIB)
 #       CplusplusFactor/dsparseTreeFactor_upacked.cpp
 ##      CplusplusFactor/dsparseTreeFactorGPU.cpp 
 ##       CplusplusFactor/lupanels.cpp
-       CplusplusFactor/lupanels_comm3d.cpp
-       CplusplusFactor/lupanelsComm3dGPU.cpp
+      #  CplusplusFactor/lupanels_comm3d.cpp
+      #  CplusplusFactor/lupanelsComm3dGPU.cpp
        CplusplusFactor/commWrapper.cpp 
 ##       CplusplusFactor/l_panels.cpp
 ##       CplusplusFactor/u_panels.cpp
-       CplusplusFactor/lupanels_GPU.cpp
+      #  CplusplusFactor/lupanels_GPU.cpp
 ##       CplusplusFactor/anc25d.cpp 
 ##       CplusplusFactor/anc25d-GPU.cpp 
 ##       CplusplusFactor/LUgpuCHandle_interface.cpp
@@ -269,11 +269,7 @@ if (TPL_ENABLE_CUDALIB)
     list(APPEND sources cuda/psgstrs_lsum_cuda.cu cuda/ssuperlu_gpu.cu)
 endif()
 if (HAVE_COMBBLAS)
-   if (enable_double)
-       list(APPEND sources double/d_c2cpp_GetHWPM.cpp)
-   else()
        list(APPEND sources single/s_c2cpp_GetHWPM.cpp double/dHWPM_CombBLAS.hpp)
-   endif()
 endif()
 
 endif() ########## enable single
@@ -406,26 +402,28 @@ endif ()
 message(STATUS "superlu_dist_libs = '${superlu_dist_libs}'.")
 
 foreach(target ${targets})
-  target_link_libraries(${target} ${superlu_dist_libs})
-  if(HAVE_PARMETIS)
-    target_link_libraries(${target} ParMETIS::ParMETIS)
-  endif()
-  if (HAVE_COMBBLAS)
-    set_target_properties(${target} PROPERTIES
-      CUDA_SEPARABLE_COMPILATION ON
-      OUTPUT_NAME superlu_dist
-      VERSION ${PROJECT_VERSION}
-      SOVERSION ${VERSION_MAJOR}
-      LINKER_LANGUAGE CXX
-    )
-  else()
-    set_target_properties(${target} PROPERTIES
-      CUDA_SEPARABLE_COMPILATION ON
-      OUTPUT_NAME superlu_dist
-      VERSION ${PROJECT_VERSION}
-      SOVERSION ${VERSION_MAJOR}
-    )
-  endif()
+    target_link_libraries(${target} ${superlu_dist_libs})
+    if(HAVE_PARMETIS)
+      target_link_libraries(${target} ParMETIS::ParMETIS)
+    endif()
+    if (HAVE_COMBBLAS)
+        set_target_properties(${target} PROPERTIES
+                              CUDA_SEPARABLE_COMPILATION ON
+                              CUDA_RESOLVE_DEVICE_SYMBOLS ON
+			      OUTPUT_NAME superlu_dist
+                              VERSION ${PROJECT_VERSION}
+                              SOVERSION ${VERSION_MAJOR}
+			      LINKER_LANGUAGE CXX
+			      )
+    else()
+        set_target_properties(${target} PROPERTIES
+		              CUDA_SEPARABLE_COMPILATION ON
+                              CUDA_RESOLVE_DEVICE_SYMBOLS ON
+                              OUTPUT_NAME superlu_dist
+                              VERSION ${PROJECT_VERSION}
+                              SOVERSION ${VERSION_MAJOR}
+			      )
+    endif()
 endforeach(target)
 
 # Add CUDA runtime library and CUBLAS library

@@ -31,12 +31,13 @@ module load PrgEnv-nvidia
 module load cudatoolkit
 module load cray-libsci
 # module use /global/common/software/nersc/pe/modulefiles/latest
-module load nvshmem/2.11.0
+# module load nvshmem/2.11.0
+export MAGMA_ROOT=/global/cfs/cdirs/m2957/lib/magma_nopiv
 # avoid bug in cudatoolkit
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH//\/usr\/local\/cuda-12.2\/compat:/}
 # export LD_LIBRARY_PATH=${LD_LIBRARY_PATH//\/usr\/local\/cuda-11.7\/compat:/}
 
-# NVSHMEM_HOME=/global/cfs/cdirs/m3894/lib/PrgEnv-gnu/nvshmem_src_2.8.0-3/build/
+NVSHMEM_HOME=/global/cfs/cdirs/m3894/lib/PrgEnv-gnu/nvshmem_src_2.8.0-3/build/
 #NVSHMEM_HOME=${CRAY_NVIDIA_PREFIX}/comm_libs/nvshmem/
 cmake .. \
   -DCMAKE_C_FLAGS="  -std=c11 -DPRNTlevel=1 -DPROFlevel=0 -DDEBUGlevel=0 -DAdd_ -I${NVSHMEM_HOME}/include" \
@@ -53,13 +54,16 @@ cmake .. \
   -DCMAKE_INSTALL_PREFIX=. \
   -DCMAKE_INSTALL_LIBDIR=./lib \
   -DCMAKE_BUILD_TYPE=Release \
+  -DTPL_ENABLE_MAGMALIB=ON \
+  -DTPL_MAGMA_INCLUDE_DIRS="${MAGMA_ROOT}/include" \
+  -DTPL_MAGMA_LIBRARIES="${MAGMA_ROOT}/lib/libmagma.so" \
   -DTPL_BLAS_LIBRARIES=/opt/cray/pe/libsci/23.12.5/NVIDIA/23.3/x86_64/lib/libsci_nvidia_mp.so \
   -DTPL_LAPACK_LIBRARIES=/opt/cray/pe/libsci/23.12.5/NVIDIA/23.3/x86_64/lib/libsci_nvidia_mp.so \
   -DTPL_PARMETIS_INCLUDE_DIRS="/global/cfs/cdirs/m3894/lib/PrgEnv-nvidia/parmetis-4.0.3/include;/global/cfs/cdirs/m3894/lib/PrgEnv-nvidia/parmetis-4.0.3/metis/include" \
   -DTPL_PARMETIS_LIBRARIES="/global/cfs/cdirs/m3894/lib/PrgEnv-nvidia/parmetis-4.0.3/build/Linux-x86_64/libparmetis/libparmetis.so;/global/cfs/cdirs/m3894/lib/PrgEnv-nvidia/parmetis-4.0.3/build/Linux-x86_64/libmetis/libmetis.so" \
   -DTPL_ENABLE_COMBBLASLIB=OFF \
-  -DTPL_ENABLE_NVSHMEM=OFF \
-  -DTPL_NVSHMEM_LIBRARIES="-L${CUDA_HOME}/lib64/stubs/ -lnvidia-ml -L/usr/lib64 -lgdrapi -lstdc++ -L/opt/cray/libfabric/1.15.2.0/lib64 -lfabric -L${NVSHMEM_HOME}/lib -lnvshmem" \
+  -DTPL_ENABLE_NVSHMEM=ON \
+  -DTPL_NVSHMEM_LIBRARIES="-L${CUDA_HOME}/lib64/stubs/ -lnvidia-ml -L/usr/lib64 -lgdrapi -lstdc++ -L/opt/cray/libfabric/1.20.1/lib64 -lfabric -L${NVSHMEM_HOME}/lib -lnvshmem" \
   -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
   -DMPIEXEC_NUMPROC_FLAG=-n \
   -DMPIEXEC_EXECUTABLE=/usr/bin/srun \

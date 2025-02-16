@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.18.1 FATAL_ERROR)
 #project(SuperLU_DIST C CXX CUDA)
 project(SuperLU_DIST C CXX)
 set(VERSION_MAJOR "9")
-set(VERSION_MINOR "0")
+set(VERSION_MINOR "1")
 set(VERSION_BugFix "0")
 set(PROJECT_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_BugFix})
 
@@ -25,6 +25,7 @@ option(enable_complex16 "Enable complex16 precision library" ON)
 option(enable_tests  "Build tests" ON)
 option(enable_examples  "Build examples" ON)
 option(XSDK_ENABLE_Fortran "Enable Fortran" ON)
+option(enable_python "Enable Python" ON)
 
 #-- BLAS
 option(TPL_ENABLE_INTERNAL_BLASLIB  "Build the CBLAS library" ${enable_blaslib_DEFAULT})
@@ -601,6 +602,8 @@ endif()
 
 include_directories(${CMAKE_BINARY_DIR}/SRC) # For superlu_dist_config.h
 include_directories(${CMAKE_SOURCE_DIR}/SRC/include)
+include_directories(${CMAKE_SOURCE_DIR}/SRC/cuda)
+include_directories(${CMAKE_SOURCE_DIR}/SRC/hip)
 if (TPL_PARMETIS_INCLUDE_DIRS)
   include_directories(${TPL_PARMETIS_INCLUDE_DIRS})  ## parmetis
 endif ()
@@ -637,6 +640,14 @@ endif()
 
 if (XSDK_ENABLE_Fortran)
   add_subdirectory(FORTRAN)
+endif()
+
+if (enable_python)
+if (BUILD_SHARED_LIBS)
+  add_subdirectory(PYTHON)
+else()
+  message("-- Not building Python interface, which requires shared build.")
+endif()
 endif()
 
 # superlu_dist uses c++11. PUBLIC means that the other codes linking to it need c++11

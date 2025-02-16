@@ -77,8 +77,8 @@ typedef struct {
     DiagScale_t DiagScale;
     float *R;
     float *C;
-    int_t  *perm_r;
-    int_t  *perm_c;
+    int  *perm_r;
+    int  *perm_c;
 } sScalePermstruct_t;
 
 #if 0 // Sherry: move to superlu_defs.h
@@ -370,7 +370,7 @@ typedef struct {
 /*-- Data structure holding the information for the solution phase --*/
 typedef struct {
     int_t *row_to_proc;
-    int_t *inv_perm_c;
+    int *inv_perm_c;
     int_t num_diag_procs, *diag_procs, *diag_len;
     psgsmv_comm_t *gsmv_comm; /* communication metadata for SpMV,
          	       		      required by IterRefine.          */
@@ -554,7 +554,7 @@ extern void    psgsequ (SuperMatrix *, float *, float *, float *,
 extern float  pslangs (char *, SuperMatrix *, gridinfo_t *);
 extern void    pslaqgs (SuperMatrix *, float *, float *, float,
 			float, float, char *);
-extern int     psPermute_Dense_Matrix(int_t, int_t, int_t [], int_t[],
+extern int     psPermute_Dense_Matrix(int_t, int_t, int_t [], int perm[],
 				      float [], int, float [], int, int,
 				      gridinfo_t *);
 
@@ -589,19 +589,20 @@ extern void  psgssvx(superlu_dist_options_t *, SuperMatrix *,
 		     int, int, gridinfo_t *, sLUstruct_t *,
 		     sSOLVEstruct_t *, float *, SuperLUStat_t *, int *);
 extern void  psCompute_Diag_Inv(int_t, sLUstruct_t *,gridinfo_t *, SuperLUStat_t *, int *);
-extern int  sSolveInit(superlu_dist_options_t *, SuperMatrix *, int_t [], int_t [],
+extern int  sSolveInit(superlu_dist_options_t *, SuperMatrix *,
+                       int perm_r[], int perm_c[],
 		       int_t, sLUstruct_t *, gridinfo_t *, sSOLVEstruct_t *);
 extern void sSolveFinalize(superlu_dist_options_t *, sSOLVEstruct_t *);
 extern void sDestroy_A3d_gathered_on_2d(sSOLVEstruct_t *, gridinfo3d_t *);
 extern int_t psgstrs_init(int_t, int_t, int_t, int_t,
-                          int_t [], int_t [], gridinfo_t *grid,
+                          int perm_r[], int perm_c[], gridinfo_t *grid,
 	                  Glu_persist_t *, sSOLVEstruct_t *);
 extern int_t psgstrs_init_device_lsum_x(superlu_dist_options_t *, int_t , int_t , int_t , gridinfo_t *,
 	     sLUstruct_t *, sSOLVEstruct_t *, int*);
 extern int_t psgstrs_delete_device_lsum_x(sSOLVEstruct_t *);
 extern void pxgstrs_finalize(pxgstrs_comm_t *);
 extern int  sldperm_dist(int, int, int_t, int_t [], int_t [],
-		    float [], int_t *, float [], float []);
+		    float [], int *perm, float [], float []);
 extern int  sstatic_schedule(superlu_dist_options_t *, int, int,
 		            sLUstruct_t *, gridinfo_t *, SuperLUStat_t *,
 			    int_t *, int_t *, int *);
@@ -772,8 +773,7 @@ extern int_t sleafForestForwardSolve3d(superlu_dist_options_t *options, int_t tr
 
 
 extern int strs_compute_communication_structure(superlu_dist_options_t *options, int_t n, sLUstruct_t * LUstruct,
-                           sScalePermstruct_t * ScalePermstruct,
-                           int* supernodeMask, gridinfo_t *grid, SuperLUStat_t * stat);
+                           int* supernodeMask, gridinfo_t *grid);
 extern int_t sreduceSolvedX_newsolve(int_t treeId, int_t sender, int_t receiver, float* x, int nrhs,
                       strf3Dpartition_t*  trf3Dpartition, sLUstruct_t* LUstruct, gridinfo3d_t* grid3d, float* recvbuf, xtrsTimer_t *xtrsTimer);
 
@@ -990,9 +990,6 @@ extern void sperform_row_permutation(superlu_dist_options_t *, fact_t Fact,
 	       gridinfo_t *, SuperMatrix *A, SuperMatrix *GA, SuperLUStat_t *,
 	       int job, int Equil, int *rowequ, int *colequ, int *iinfo);
 extern float scomputeA_Norm(int notran, SuperMatrix *, gridinfo_t *);
-extern int strs_compute_communication_structure(superlu_dist_options_t *options,
-       int_t n, sLUstruct_t *, sScalePermstruct_t * ScalePermstruct,
-       int* supernodeMask, gridinfo_t *, SuperLUStat_t *);
 
 /* Distribute the data for numerical factorization */
 extern float sdist_psymbtonum(superlu_dist_options_t *, int_t, SuperMatrix *,
@@ -1008,6 +1005,7 @@ extern void  sPrintLblocks(int, int_t, gridinfo_t *, Glu_persist_t *,
 extern void  sPrintUblocks(int, int_t, gridinfo_t *, Glu_persist_t *,
 			   sLocalLU_t *);
 extern void  sPrint_CompCol_Matrix_dist(SuperMatrix *);
+extern void  sPrint_CompCol_triplet(SuperMatrix *);
 extern void  sPrint_Dense_Matrix_dist(SuperMatrix *);
 extern int   sPrint_CompRowLoc_Matrix_dist(SuperMatrix *);
 extern int   file_sPrint_CompRowLoc_Matrix_dist(FILE *fp, SuperMatrix *A);
@@ -1547,7 +1545,7 @@ extern int_t checkRecvLDiag(int_t k, commRequests_t *comReqs, gridinfo_t *, SCT_
 
 
 extern int psflatten_LDATA(superlu_dist_options_t *options, int_t n, sLUstruct_t * LUstruct,
-                           gridinfo_t *grid, SuperLUStat_t * stat);
+                           gridinfo_t *grid);
 extern void psconvert_flatten_skyline2UROWDATA(superlu_dist_options_t *, gridinfo_t *,
 	                 sLUstruct_t *, SuperLUStat_t *, int n);
 extern void psconvertUROWDATA2skyline(superlu_dist_options_t *, gridinfo_t *,
@@ -1559,7 +1557,7 @@ sReDistribute_A(SuperMatrix *A, sScalePermstruct_t *ScalePermstruct,
                 gridinfo_t *grid, int_t *colptr[], int_t *rowind[],
                 float *a[]);
 extern float
-psdistribute3d_Yang(superlu_dist_options_t *options, int_t n, SuperMatrix *A,
+psdistribute3d(superlu_dist_options_t *options, int_t n, SuperMatrix *A,
 	     sScalePermstruct_t *ScalePermstruct,
 	     Glu_freeable_t *Glu_freeable, sLUstruct_t *LUstruct,
 	     gridinfo3d_t *grid3d);

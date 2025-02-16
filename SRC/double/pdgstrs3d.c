@@ -151,8 +151,7 @@ double *dready_x, *dready_lsum;
 // #endif
 
 int dtrs_compute_communication_structure(superlu_dist_options_t *options, int_t n, dLUstruct_t * LUstruct,
-                           dScalePermstruct_t * ScalePermstruct,
-                           int* supernodeMask, gridinfo_t *grid, SuperLUStat_t * stat)
+                           int* supernodeMask, gridinfo_t *grid)
 {
     Glu_persist_t *Glu_persist = LUstruct->Glu_persist;
     int kr,kc,nlb,nub;
@@ -2975,9 +2974,7 @@ if ( !(get_new3dsolvetreecomm() && get_acc_solve())){
 	// fflush(stdout);
 	// }
 
-
 #if defined(GPU_ACC) && defined(SLU_HAVE_LAPACK)
-
     if (get_acc_solve()) /* GPU trisolve*/
     {
 // #if 0 /* CPU trisolve*/
@@ -3044,7 +3041,6 @@ if ( !(get_new3dsolvetreecomm() && get_acc_solve())){
 #endif
 
 	stat_loc[0]->ops[SOLVE]+=Llu->Lnzval_bc_cnt*nrhs*2; // YL: this is a rough estimate
-
     } else
     
 #endif /* match #if defined(GPU_ACC) && defined(SLU_HAVE_LAPACK) */
@@ -6275,7 +6271,7 @@ pdReDistribute3d_B_to_X (double *B, int_t m_loc, int nrhs, int_t ldb,
     int *SendCnt, *SendCnt_nrhs, *RecvCnt, *RecvCnt_nrhs;
     int *sdispls, *sdispls_nrhs, *rdispls, *rdispls_nrhs;
     int *ptr_to_ibuf, *ptr_to_dbuf;
-    int_t *perm_r, *perm_c;     /* row and column permutation vectors */
+    int *perm_r, *perm_c;     /* row and column permutation vectors */
     int_t *send_ibuf, *recv_ibuf;
     double *send_dbuf, *recv_dbuf;
     int_t *xsup, *supno;
@@ -6920,7 +6916,7 @@ pdgstrs3d (superlu_dist_options_t *options, int_t n, dLUstruct_t * LUstruct,
 
     MPI_Barrier (grid->comm);
 
-#if ( PRNTlevel >= 1)
+#if ( PRNTlevel >= 1 )
     printTRStimer(&xtrsTimer, grid3d);
 #endif
 
@@ -6930,6 +6926,9 @@ pdgstrs3d (superlu_dist_options_t *options, int_t n, dLUstruct_t * LUstruct,
 
     return;
 }                               /* pdgstrs3d */
+
+
+
 
 
 void
@@ -7298,7 +7297,8 @@ if ( !(get_new3dsolvetreecomm() && get_acc_solve())){
 
 #if ( PRNTlevel >= 1 )
     printTRStimer(&xtrsTimer, grid3d);
-#endif    
+#endif
+
 #if ( DEBUGlevel>=1 )
     CHECK_MALLOC (iam, "Exit pdgstrs3d_newsolve()");
 #endif
