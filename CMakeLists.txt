@@ -11,8 +11,8 @@ cmake_minimum_required(VERSION 3.18.1 FATAL_ERROR)
 #project(SuperLU_DIST C CXX CUDA)
 project(SuperLU_DIST C CXX)
 set(VERSION_MAJOR "9")
-set(VERSION_MINOR "1")
-set(VERSION_BugFix "0")
+set(VERSION_MINOR "2")
+set(VERSION_BugFix "1")
 set(PROJECT_VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_BugFix})
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
@@ -70,8 +70,10 @@ include(CheckLanguage)
 # Usual initialization stuff
 #
 ######################################################################
-set(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_CXX_STANDARD 14)
+if (NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 11)
+  #set(CMAKE_CXX_STANDARD 14)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #message("!!!! top: cxx_implicit='${CMAKE_CXX_IMPLICIT_LINK_LIBRARIES}'")
@@ -171,7 +173,8 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 ######################################################################
 #
 #--------------------- MPI ---------------------
-find_package(MPI REQUIRED)
+#find_package(MPI REQUIRED)
+find_package(MPI)
 if(MPI_C_FOUND)
     set(CMAKE_C_FLAGS "${MPI_C_COMPILE_FLAGS} ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "${MPI_CXX_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS}")
@@ -317,14 +320,29 @@ if (TPL_ENABLE_HIPLIB)   ## want to use hip
     message("HIP_LIB ${HIP_LIB}")
 
     # make.inc exporting not yet tested
-    string (REPLACE ";" " " HIP_LIB_STR "${HIP_LIB}")
-    set(HIP_LIB_EXPORT ${HIP_LIB_STR}) 
+    set(HIP_LIB_EXPORT "") 
+    foreach(HIP_LIB_TARGET ${HIP_LIB})
+      get_property(HIP_LIB_IMPORTED_CONFIGS TARGET ${HIP_LIB_TARGET} PROPERTY IMPORTED_CONFIGURATIONS)
+      foreach(RELTYPE RELEASE RELWITHDEBINFO DEBUG)
+        list(FIND HIP_LIB_IMPORTED_CONFIGS ${RELTYPE} HIP_IMPORTED_CONFIG)
+        if(${HIP_IMPORTED_CONFIG} GREATER_EQUAL "0")
+          list(GET HIP_LIB_IMPORTED_CONFIGS ${HIP_IMPORTED_CONFIG} HIP_LIB_IMPORTED_CONFIG)
+          break()
+        endif()
+      endforeach()
+      get_property(HIP_LIB_STR TARGET ${HIP_LIB_TARGET} PROPERTY IMPORTED_LOCATION_${HIP_LIB_IMPORTED_CONFIG})
+      message("HIP_LIB_STR ${HIP_LIB_STR}")
+      set(HIP_LIB_EXPORT ${HIP_LIB_EXPORT} ${HIP_LIB_STR}) 
+      message("HIP_LIB_EXPORT ${HIP_LIB_EXPORT}")
+    endforeach()
+    string (REPLACE ";" " " HIP_LIB_EXPORT "${HIP_LIB_EXPORT}")
+    message("HIP_LIB_EXPORT ${HIP_LIB_EXPORT}")
     set(HAVE_HIP TRUE)
     # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_HIP")
     # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_HIP")    
     # set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -DHAVE_HIP")    
     if (BUILD_SHARED_LIBS)
-    set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -fPIC")    
+    set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -fPIC")
     endif()
 
     # if ("$ENV{HIP_PLATFORM}" STREQUAL "hcc")
@@ -527,7 +545,9 @@ if (TPL_ENABLE_COMBBLASLIB)   ## want to use CombBLAS
 
   message("-- Enabled support for COMBBLAS")
   set(COMBBLAS_FOUND TRUE)
-  set(CMAKE_CXX_STANDARD 14)  # CombBLAS requires c++14
+  if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 14)  # CombBLAS requires c++14
+  endif()
 
   set(COMBBLAS_LIB ${TPL_COMBBLAS_LIBRARIES})
   # fix up COMBBLAS library names
@@ -614,6 +634,7 @@ if (TPL_MAGMA_INCLUDE_DIRS)
   include_directories(${TPL_MAGMA_INCLUDE_DIRS})  ## MAGMA
 endif ()
 include_directories(${MPI_C_INCLUDE_PATH})
+include_directories($ENV{MPI_C_INCLUDE_PATH})
 
 ######################################################################
 #
@@ -675,5 +696,9 @@ configure_file(${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h.in ${SuperLU
 
 # Following is to configure a file for FORTRAN code
 configure_file(${SuperLU_DIST_SOURCE_DIR}/SRC/superlu_dist_config.h.in ${SuperLU_DIST_BINARY_DIR}/FORTRAN/superlu_dist_config.h)
+
+# Copy example matrix files to the build directory
+file(COPY ${SuperLU_DIST_SOURCE_DIR}/EXAMPLE/g20.rua DESTINATION ${CMAKE_BINARY_DIR}/EXAMPLE)
+file(COPY ${SuperLU_DIST_SOURCE_DIR}/EXAMPLE/cg20.cua DESTINATION ${CMAKE_BINARY_DIR}/EXAMPLE)
 
 #message("MPI_Fortran_LINK_FLAGS '${MPI_Fortran_LINK_FLAGS}'")

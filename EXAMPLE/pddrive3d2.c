@@ -117,7 +117,7 @@ main (int argc, char *argv[])
     int lookahead, colperm, rowperm, ir;
     int iam, info, ldb, ldx, nrhs;
     char **cpp, c, *suffix;
-    FILE *fp, *fopen ();
+    FILE *fp;
     extern int cpp_defs ();
     int ii, omp_mpi_level;
 
@@ -292,7 +292,6 @@ main (int argc, char *argv[])
        options.DiagInv           = NO;
      */
     set_default_options_dist (&options);
-    options.Algo3d = YES;
 #if 0
     options.RowPerm = NOROWPERM;
     options.IterRefine = NOREFINE;

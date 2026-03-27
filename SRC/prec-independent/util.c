@@ -209,8 +209,6 @@ void set_default_options_dist(superlu_dist_options_t *options)
 {
     options->Fact = DOFACT;
     options->Equil = YES;
-    options->ILU_level = SLU_EMPTY;
-    options->UserDefineSupernode = NO; /* detect supernodes internally */
     options->ParSymbFact = NO;
 #ifdef HAVE_PARMETIS
     options->ColPerm = METIS_AT_PLUS_A;
@@ -226,6 +224,9 @@ void set_default_options_dist(superlu_dist_options_t *options)
     options->PrintStat = YES;
     options->lookahead_etree = NO;
     options->num_lookaheads = 10;
+    options->SolveOnly = NO;
+    options->ILU_level = SLU_EMPTY;
+    options->UserDefineSupernode = NO; /* detect supernodes internally */
     options->superlu_maxsup = 256;
     options->superlu_relax = 30;
     strcpy(options->superlu_rankorder, "Z"); 
@@ -236,7 +237,7 @@ void set_default_options_dist(superlu_dist_options_t *options)
     options->superlu_num_gpu_streams = 8;
     options->batchCount = 0;
     options->SymPattern = NO;
-    options->Algo3d = NO;
+    //options->Algo3d = NO;
 #ifdef SLU_HAVE_LAPACK
     options->DiagInv = YES;
 #else
@@ -257,7 +258,6 @@ void print_options_dist(superlu_dist_options_t *options)
     printf("**    Fact                      : %4d\n", options->Fact);
     printf("**    Equil                     : %4d\n", options->Equil);
     printf("**    DiagInv                   : %4d\n", options->DiagInv);
-    printf("**    UserDefineSupernode       : %4d\n", options->UserDefineSupernode);
     printf("**    ParSymbFact               : %4d\n", options->ParSymbFact);
     printf("**    ColPerm                   : %4d\n", options->ColPerm);
     printf("**    RowPerm                   : %4d\n", options->RowPerm);
@@ -268,15 +268,18 @@ void print_options_dist(superlu_dist_options_t *options)
     printf("**    batchCount                : %4d\n", options->batchCount);
     printf("**    SymPattern                : %4d\n", options->SymPattern);
     printf("**    lookahead_etree           : %4d\n", options->lookahead_etree);
+    printf("**    SolveOnly                 : %4d\n", options->SolveOnly);
+    printf("**    ILU_level                 : %4d\n", options->ILU_level);
+    printf("**    UserDefineSupernode       : %4d\n", options->UserDefineSupernode);
     printf("**    Use_TensorCore            : %4d\n", options->Use_TensorCore);
-    printf("**    Use 3D algorithm          : %4d\n", options->Algo3d);
+    //printf("**    Use 3D algorithm          : %4d\n", );
     printf("** parameters that can be altered by environment variables:\n");
-    printf("**    superlu_relax             : %4d\n", sp_ienv_dist(2, options));
-    printf("**    superlu_maxsup            : %4d\n", sp_ienv_dist(3, options));
-    printf("**    min GEMM m*k*n to use GPU : %d\n", sp_ienv_dist(7, options));
-    printf("**    GPU buffer size           : %10d\n", sp_ienv_dist(8, options));
-    printf("**    GPU streams               : %4d\n", sp_ienv_dist(9, options));
-    printf("**    estimated fill ratio      : %4d\n", sp_ienv_dist(6, options));
+    printf("**    superlu_relax             : %4d\n", (int) sp_ienv_dist(2, options));
+    printf("**    superlu_maxsup            : %4d\n", (int) sp_ienv_dist(3, options));
+    printf("**    min GEMM m*k*n to use GPU : %d\n", (int) sp_ienv_dist(7, options));
+    printf("**    GPU buffer size           : %4lld\n", (long long) sp_ienv_dist(8, options));
+    printf("**    GPU streams               : %4d\n", (int) sp_ienv_dist(9, options));
+    printf("**    estimated fill ratio      : %4d\n", (int) sp_ienv_dist(6, options));
     printf("**************************************************\n");
 }
 
@@ -299,17 +302,14 @@ void print_sp_ienv_dist(superlu_dist_options_t *options)
     }
 #endif
 
-    int gpu_enabled = 0;
-#ifdef GPU_ACC
-    gpu_enabled = sp_ienv_dist(10, options);
-#endif
+    int gpu_enabled = get_acc_offload(options);
     
     printf("**************************************************\n");
     printf(".. blocking parameters from sp_ienv():\n");
-    printf("**    relaxation                 : %d\n", sp_ienv_dist(2, options));
-    printf("**    max supernode              : %d\n", sp_ienv_dist(3, options));
-    printf("**    estimated fill ratio       : %d\n", sp_ienv_dist(6, options));
-    printf("**    min GEMM m*k*n to use GPU  : %d\n", sp_ienv_dist(7, options));
+    printf("**    relaxation                 : %d\n", (int) sp_ienv_dist(2, options));
+    printf("**    max supernode              : %d\n", (int) sp_ienv_dist(3, options));
+    printf("**    estimated fill ratio       : %d\n", (int) sp_ienv_dist(6, options));
+    printf("**    min GEMM m*k*n to use GPU  : %d\n", (int) sp_ienv_dist(7, options));
     printf(".. parallel environment:\n");
     printf("**    OpenMP threads             : %4d\n", num_threads);
     printf("**    GPU enabled?               : %4d\n", gpu_enabled);
@@ -685,7 +685,7 @@ void PrintInt32(char *name, int len, int *x)
     {
         if (i % 10 == 0)
             printf("\n\t[%2d-%2d]", i, i + 9);
-        printf("%6d", x[i]);
+        printf("%10d", x[i]);
     }
     printf("\n"); fflush(stdout);
 }
@@ -1409,7 +1409,7 @@ gemm_division_cpu_gpu(
 {
     int Ngem = sp_ienv_dist(7, options);  /*get_mnk_dgemm ();*/
     int min_gpu_col = get_gpublas_nb (); /* default 64 */
-    int superlu_acc_offload = sp_ienv_dist(10, options); //get_acc_offload();
+    int superlu_acc_offload = get_acc_offload(options);
     int ncols = full_u_cols[num_blks - 1];
     // int ncolsExcludingFirst =full_u_cols[num_blks - 1]
 
@@ -1521,4 +1521,6 @@ int get_mpi_process_per_gpu ()
 	return 1;
       }
 }
+
+int sizeof_int_t() { return sizeof(int_t); }
 

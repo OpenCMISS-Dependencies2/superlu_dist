@@ -1069,8 +1069,11 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 	    	/* Every process does this.
 		   returned value (-iinfo) is the size of lsub[], incuding pruned graph.*/
 		int_t linfo;
-	    	linfo = symbfact(options, iam, &GAC, perm_c, etree,
-			     	 Glu_persist, Glu_freeable);
+		if ( options->ILU_level != SLU_EMPTY ) { /* for any level-based ILU */
+			linfo = ilu_level_symbfact(options, &GAC, perm_c, etree, Glu_persist, Glu_freeable);
+		} else { /* for complete LU */
+			linfo = symbfact(options, iam, &GAC, perm_c, etree, Glu_persist, Glu_freeable);
+		}
 		nnzLU = Glu_freeable->nnzLU;
 	    	stat->utime[SYMBFAC] = SuperLU_timer_() - t;
 	    	if ( linfo <= 0 ) { /* Successful return */
@@ -1412,8 +1415,7 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 	   because perm_r[] and/or perm_c[] is changed.    */
 	if ( options->SolveInitialized == YES ) { /* Initialized before */
 	    dSolveFinalize(options, SOLVEstruct); /* Clean up structure */
-		pdgstrs_delete_device_lsum_x(SOLVEstruct);
-	    options->SolveInitialized = NO;   /* Reset the solve state */
+		if (get_acc_solve()) pdgstrs_delete_device_lsum_x(SOLVEstruct);
 	}
      }
 #if 0
@@ -1447,6 +1449,7 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 		pdconvertU(options, grid, LUstruct, stat, n);
 #endif
 
+if (get_acc_solve()){
 #ifdef GPU_ACC
 		checkGPU(gpuMemcpy(LUstruct->Llu->d_Linv_bc_dat, LUstruct->Llu->Linv_bc_dat,
 							(LUstruct->Llu->Linv_bc_cnt) * sizeof(double), gpuMemcpyHostToDevice));
@@ -1455,6 +1458,7 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 		checkGPU(gpuMemcpy(LUstruct->Llu->d_Lnzval_bc_dat, LUstruct->Llu->Lnzval_bc_dat,
 							(LUstruct->Llu->Lnzval_bc_cnt) * sizeof(double), gpuMemcpyHostToDevice));
 #endif
+}
 
 
 	}
@@ -1630,7 +1634,7 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 
             /* Deallocate the storage associated with SOLVEstruct1 */
 	    if ( nrhs > 1 ) {
-	        pdgstrs_delete_device_lsum_x(SOLVEstruct1);
+	        if (get_acc_solve()) pdgstrs_delete_device_lsum_x(SOLVEstruct1);
 			pxgstrs_finalize(SOLVEstruct1->gstrs_comm);
 	        SUPERLU_FREE(SOLVEstruct1);
 	    }

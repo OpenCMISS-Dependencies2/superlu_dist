@@ -114,7 +114,7 @@ int main (int argc, char *argv[])
     int equil, colperm, rowperm, ir, lookahead;
     int iam, info, ldb, ldx, nrhs;
     char **cpp, c, *suffix;
-    FILE *fp, *fopen ();
+    FILE *fp;
     extern int cpp_defs ();
     int ii, omp_mpi_level, batchCount = 0;
     int*    usermap;     /* The following variables are used for batch solves */
@@ -223,11 +223,18 @@ int main (int argc, char *argv[])
        options.DiagInv           = NO;
      */
     set_default_options_dist (&options);
-    options.Algo3d = YES;
-    options.IterRefine = NOREFINE;
-    // options.ParSymbFact       = YES;
-    // options.ColPerm           = PARMETIS;
+
+
+// //The following options test ILU
+//     options.ILU_level = 0;
+//     options.IterRefine = SLU_DOUBLE;
+//     options.lookahead_etree   = YES;
+//     options.ReplaceTinyPivot  = YES;
+//     options.ColPerm = NATURAL;
+
 #if 0
+    options.ParSymbFact       = YES;
+    options.ColPerm           = PARMETIS;
     options.DiagInv           = YES; // only if SLU_HAVE_LAPACK
     options.ReplaceTinyPivot = YES;
     options.RowPerm = NOROWPERM;
@@ -252,18 +259,18 @@ int main (int argc, char *argv[])
 	// options.RowPerm = NOROWPERM;
 	// options.ColPerm = NATURAL;
 
-    if (!iam) {
-	print_sp_ienv_dist(&options);
-	print_options_dist(&options);
-	fflush(stdout);
-    }
-    
     /* ------------------------------------------------------------
        INITIALIZE THE SUPERLU PROCESS GRID.
        ------------------------------------------------------------ */
     superlu_gridinit3d (MPI_COMM_WORLD, nprow, npcol, npdep, &grid);
     iam = grid.iam;
 
+    if (!iam) {
+	print_sp_ienv_dist(&options);
+	print_options_dist(&options);
+	fflush(stdout);
+    }
+    
 #if ( DEBUGlevel>=1 )
     CHECK_MALLOC (iam, "Enter main()");
 #endif
@@ -273,7 +280,7 @@ int main (int argc, char *argv[])
     /* ------------------------------------------------------------
        INITIALIZE GPU ENVIRONMENT
        ------------------------------------------------------------ */
-    int superlu_acc_offload = sp_ienv_dist(10, &options); //get_acc_offload();
+    int superlu_acc_offload = get_acc_offload(&options);
     if (superlu_acc_offload) {
         MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
         double t1 = SuperLU_timer_();

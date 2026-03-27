@@ -38,6 +38,7 @@ if(enable_double)
   set(DEXM pddrive.c dcreate_matrix.c)
   add_executable(pddrive ${DEXM})
   target_link_libraries(pddrive ${all_link_libs})
+  add_superlu_dist_example(pddrive big.rua 2 2)
   install(TARGETS pddrive RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE")  
   
   set(DEXM1 pddrive1.c dcreate_matrix.c)
@@ -66,10 +67,15 @@ if(enable_double)
   set(DEXM3D pddrive3d.c dcreate_matrix.c dcreate_matrix3d.c)
   add_executable(pddrive3d ${DEXM3D})
   target_link_libraries(pddrive3d ${all_link_libs})
-  install(TARGETS pddrive3d RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE")  
+  install(TARGETS pddrive3d RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE")
 
-  set(DEXM3D pddrive3d_block_diag.c dcreate_matrix.c dcreate_matrix3d.c)
-  add_executable(pddrive3d_block_diag ${DEXM3D})
+  set(DEXM3D_VB pddrive3d_vbatch.c dcreate_matrix.c dcreate_matrix3d.c)
+  add_executable(pddrive3d_vbatch ${DEXM3D_VB})
+  target_link_libraries(pddrive3d_vbatch ${all_link_libs})
+  install(TARGETS pddrive3d_vbatch RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE")  
+
+  set(DEXM3D_BD pddrive3d_block_diag.c dcreate_matrix.c dcreate_matrix3d.c)
+  add_executable(pddrive3d_block_diag ${DEXM3D_BD})
   target_link_libraries(pddrive3d_block_diag ${all_link_libs})
   install(TARGETS pddrive3d_block_diag RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE")
   
@@ -196,7 +202,7 @@ if(enable_complex16)
   target_link_libraries(pzdrive3 ${all_link_libs})
   add_superlu_dist_example(pzdrive3 cg20.cua 2 2)
   install(TARGETS pzdrive3 RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE")  
-  
+
   set(ZEXM4 pzdrive4.c zcreate_matrix.c)
   add_executable(pzdrive4 ${ZEXM4})
   target_link_libraries(pzdrive4 ${all_link_libs})
@@ -207,6 +213,13 @@ if(enable_complex16)
   target_link_libraries(pzdrive3d ${all_link_libs})
   install(TARGETS pzdrive3d RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE")  
   
+  
+  set(ZEXM3DQCD pzdrive3d_qcd.cpp )
+  add_executable(pzdrive3d_qcd ${ZEXM3DQCD})
+  target_link_libraries(pzdrive3d_qcd ${all_link_libs})
+  install(TARGETS pzdrive3d_qcd RUNTIME DESTINATION "${INSTALL_LIB_DIR}/EXAMPLE") 
+
+
   set(ZEXM3D1 pzdrive3d1.c zcreate_matrix.c zcreate_matrix3d.c)
   add_executable(pzdrive3d1 ${ZEXM3D1})
   target_link_libraries(pzdrive3d1 ${all_link_libs})

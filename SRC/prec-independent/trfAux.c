@@ -230,7 +230,7 @@ int_t* getFactIperm(int_t* perm, int_t nsupers)
     return iperm;
 }
 
-int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
+int_t* getPerm_c_supno(int_t nsupers, int n, superlu_dist_options_t *options,
 		       int_t *etree, Glu_persist_t *Glu_persist,
 		       int_t** Lrowind_bc_ptr, int_t** Ufstnz_br_ptr,
 		       gridinfo_t *grid)
@@ -298,8 +298,10 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
             {
                 for ( k = 0; k < SuperSize(lb); k++ )
                 {
-                    jb = Glu_persist->supno[etree[j + k]];
-                    if ( jb != lb ) etree_supno[lb] = SUPERLU_MIN( etree_supno[lb], jb );
+                    if(etree[j + k] !=n){
+                        jb = Glu_persist->supno[etree[j + k]];
+                        if ( jb != lb ) etree_supno[lb] = SUPERLU_MIN( etree_supno[lb], jb );
+                    }
                 }
                 j += SuperSize(lb);
             }
@@ -408,7 +410,6 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
                 }
             }
         }
-
         /* process fifo queue, and compute the ordering */
         i = 0;
         perm_c_supno  = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
@@ -1113,7 +1114,6 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
                 }
             }
         }
-
         /* process fifo queue, and compute the ordering */
         i = 0;
         perm_c_supno  = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
@@ -1123,7 +1123,6 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
             /*printf( "=== pop %d (%d) ===\n",head->id,i );*/
             ptr = head;  j = ptr->id;
             head = ptr->next;
-
             perm_c_supno[i] = j;
             SUPERLU_FREE(ptr);
             i++; nnodes --;
@@ -2561,6 +2560,7 @@ void permCol_SymbolicFact3d(superlu_dist_options_t *options, int n, SuperMatrix 
     int_t iinfo;
     int iam = grid3d->iam;
 
+    /* Permutes the columns of the original matrix, and compute etree */
     sp_colorder(options, GA, perm_c, etree, &GAC);
 
     /* Form Pc*A*Pc' to preserve the diagonal of the matrix GAC. */
@@ -2581,6 +2581,14 @@ void permCol_SymbolicFact3d(superlu_dist_options_t *options, int n, SuperMatrix 
     if (!iam)
         printf(".. symbfact(): relax %4d, maxsuper %4d, fill %4d\n",
                sp_ienv_dist(2, options), sp_ienv_dist(3, options), sp_ienv_dist(6, options));
+#endif
+#if (DEBUGlevel >= 1)
+    extern void file_dPrint_NCPformat_triplet(FILE *fp, SuperMatrix *A);
+    if (!iam) {
+	FILE *fp = fopen("GAC.dat", "w");
+	file_dPrint_NCPformat_triplet(fp, &GAC);
+	fclose(fp);
+    }
 #endif
 
     t = SuperLU_timer_();
@@ -2803,10 +2811,10 @@ gEtreeInfo_t fillEtreeInfo( int_t nsupers, int_t* setree, treeList_t *treeList) 
     return gEtreeInfo;
 }
 
-int_t* create_iperm_c_supno(int_t nsupers, superlu_dist_options_t *options, 
+int_t* create_iperm_c_supno(int_t nsupers, int n, superlu_dist_options_t *options, 
     Glu_persist_t *Glu_persist, int_t *etree, int_t** Lrowind_bc_ptr, int_t** Ufstnz_br_ptr, gridinfo3d_t *grid3d) {
     gridinfo_t *grid = &(grid3d->grid2d);
-    int_t *perm_c_supno = getPerm_c_supno(nsupers, options,
+    int_t *perm_c_supno = getPerm_c_supno(nsupers, n, options,
                                           etree,
                                           Glu_persist,
                                           Lrowind_bc_ptr,

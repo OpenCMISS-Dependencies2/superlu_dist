@@ -118,7 +118,7 @@ main (int argc, char *argv[])
     int lookahead, colperm, rowperm, ir;
     int iam, info, ldb, ldx, nrhs;
     char **cpp, c, *suffix;
-    FILE *fp, *fopen ();
+    FILE *fp;
     extern int cpp_defs ();
     int ii, omp_mpi_level, batchCount = 0;
     int*    usermap;     /* The following variables are used for batch solves */
@@ -230,13 +230,11 @@ main (int argc, char *argv[])
        options.DiagInv           = NO;
      */
     set_default_options_dist (&options);
-    options.Algo3d = YES;
     options.ReplaceTinyPivot = YES;
     options.IterRefine = NOREFINE;
     options.DiagInv           = YES;
     // options.ParSymbFact       = YES;
     // options.ColPerm           = PARMETIS;
-    options.Algo3d = YES;
 	options.DiagInv = YES;
     options.ReplaceTinyPivot  = YES;    
 #if 0
@@ -262,7 +260,7 @@ main (int argc, char *argv[])
     }
     
 #ifdef GPU_ACC
-    int superlu_acc_offload = sp_ienv_dist(10, &options); //get_acc_offload();
+    int superlu_acc_offload = get_acc_offload(&options);
     if (superlu_acc_offload) {
         MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
         double t1 = SuperLU_timer_();

@@ -35,7 +35,7 @@ SEXM	= psdrive.o screate_matrix.o dcreate_matrix.o screate_A_x_b.o \
 	#	psutil.o sdistribute.o
 # psgssvx_d2.o psgsrfs_d2.o sutil_dist.o psgsequb.o
 
-DEXM	= pddrive.o dcreate_matrix.o 
+DEXM	= pddrive.o dcreate_matrix.o
 	# psymbfact.o pdgssvx.o pdsymbfact_distdata.o memory.o
 
 DEXMRHS	= pddrive_rhs.o dcreate_matrix_rhs.o #sp_ienv.o 
@@ -67,6 +67,8 @@ DEXMG1	= pddrive1_ABglobal.o
 DEXMG2	= pddrive2_ABglobal.o
 DEXMG3	= pddrive3_ABglobal.o
 DEXMG4	= pddrive4_ABglobal.o
+
+ZEXM3DQCD= pzdrive3d_qcd.o
 
 ZEXM	= pzdrive.o zcreate_matrix.o
 	#pzgstrf2.o pzgstrf_v3.3.o pzgstrf.o
@@ -199,6 +201,9 @@ pzdrive4: $(ZEXM4) $(DSUPERLULIB)
 pzdrive3d: $(ZEXM3D) $(DSUPERLULIB)
 	$(LOADER) $(LOADOPTS) $(ZEXM3D) $(LIBS) -lm -o $@
 
+pzdrive3d_qcd: $(ZEXM3DQCD) $(DSUPERLULIB)
+	$(LOADER) $(LOADOPTS) $(ZEXM3DQCD) $(LIBS) -lm -o $@
+
 pzdrive3d1: $(ZEXM3D1) $(DSUPERLULIB)
 	$(LOADER) $(LOADOPTS) $(ZEXM3D1) $(LIBS) -lm -o $@
 
@@ -229,7 +234,7 @@ pzdrive4_ABglobal: $(ZEXMG4) $(DSUPERLULIB)
 	$(CC) $(CFLAGS) $(CDEFS) $(BLASDEF) -I$(INCLUDEDIR) -c $< $(VERBOSE)
 
 .cpp.o:
-	$(CPP) $(CPPFLAGS) $(CDEFS) $(BLASDEF) -I$(INCLUDEDIR) -c $< $(VERBOSE)
+	$(CXX) $(CXXFLAGS) $(CDEFS) $(BLASDEF) -I$(INCLUDEDIR) -c $< $(VERBOSE)
 
 .f.o:
 	$(FORTRAN) $(FFLAGS) -c $< $(VERBOSE)

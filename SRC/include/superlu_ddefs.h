@@ -991,7 +991,6 @@ extern void dperform_row_permutation(superlu_dist_options_t *, fact_t Fact,
 	       int job, int Equil, int *rowequ, int *colequ, int *iinfo);
 extern double dcomputeA_Norm(int notran, SuperMatrix *, gridinfo_t *);
 
-
 /* Distribute the data for numerical factorization */
 extern float ddist_psymbtonum(superlu_dist_options_t *, int_t, SuperMatrix *,
                                 dScalePermstruct_t *, Pslu_freeable_t *,
@@ -1007,6 +1006,7 @@ extern void  dPrintUblocks(int, int_t, gridinfo_t *, Glu_persist_t *,
 			   dLocalLU_t *);
 extern void  dPrint_CompCol_Matrix_dist(SuperMatrix *);
 extern void  dPrint_CompCol_triplet(SuperMatrix *);
+extern void  file_dPrint_NCPformat_triplet(FILE *, SuperMatrix *);
 extern void  dPrint_Dense_Matrix_dist(SuperMatrix *);
 extern int   dPrint_CompRowLoc_Matrix_dist(SuperMatrix *);
 extern int   file_dPrint_CompRowLoc_Matrix_dist(FILE *fp, SuperMatrix *A);
@@ -1104,6 +1104,9 @@ extern int dcreate_block_diag_3d(SuperMatrix *A, int batchCount, int nrhs, doubl
 extern int dcreate_batch_systems(handle_t *SparseMatrix_handles, int batchCount,
 				 int nrhs, double **rhs, int *ldb, double **x, int *ldx,
 				 FILE *fp, char * postfix, gridinfo3d_t *grid3d);
+extern int dcreate_batch_systems_multiple(handle_t *SparseMatrix_handles, int batchCount,
+                 int nrhs, double **RHSptr, int *ldRHS, double **xtrue, int *ldX,
+                 FILE **fp, char * postfix, gridinfo3d_t *grid3d);
 
 /* Matrix distributed in NRformat_loc in 3D process grid. It converts
    it to a NRformat_loc distributed in 2D grid in grid-0 */
@@ -1597,13 +1600,32 @@ extern int pdgssvx3d_csc_batch(
 		gridinfo3d_t *grid3d, SuperLUStat_t *stat, int *info
 		//DeviceContext context /* device context including queues, events, dependencies */
 		);
+extern int pdgssvx3d_csc_vbatch(
+        superlu_dist_options_t *, int batchCount, int *m, int *n, int *nnz,
+        int nrhs, handle_t *, double **RHSptr, int *ldRHS,
+        double **ReqPtr, double **CeqPtr,
+        int **RpivPtr, int **CpivPtr, DiagScale_t *DiagScale,
+        handle_t *F, double **Xptr, int *ldX, double **Berrs,
+        gridinfo3d_t *grid3d, SuperLUStat_t *stat, int *info
+        //DeviceContext context /* device context including queues, events, dependencies */
+        );
 extern int dequil_batch(
     superlu_dist_options_t *, int batchCount, int m, int n, handle_t *,
     double **ReqPtr, double **CeqPtr, DiagScale_t *
     //    DeviceContext context /* device context including queues, events, dependencies */
     );
+extern int dequil_vbatch(
+    superlu_dist_options_t *, int batchCount, int *m, int *n, handle_t *,
+    double **ReqPtr, double **CeqPtr, DiagScale_t *
+    //    DeviceContext context /* device context including queues, events, dependencies */
+    );
 extern int dpivot_batch(
     superlu_dist_options_t *, int batchCount, int m, int n, handle_t *,
+    double **ReqPtr, double **CeqPtr, DiagScale_t *, int **RpivPtr
+    //    DeviceContext context /* device context including queues, events, dependencies */
+    );
+extern int dpivot_vbatch(
+    superlu_dist_options_t *, int batchCount, int *m, int *n, handle_t *,
     double **ReqPtr, double **CeqPtr, DiagScale_t *, int **RpivPtr
     //    DeviceContext context /* device context including queues, events, dependencies */
     );
@@ -1615,7 +1637,7 @@ extern void dDumpLblocks3D(int_t nsupers, gridinfo3d_t *grid3d,
 			   Glu_persist_t *Glu_persist, dLocalLU_t *Llu);
 extern void dDumpUblocks3D(int_t nsupers, gridinfo3d_t *grid3d,
 			   Glu_persist_t *Glu_persist, dLocalLU_t *Llu);
-    
+
 /*== end 3D prototypes ===================*/
 
 extern double *dready_x;

@@ -35,6 +35,8 @@ at the top-level directory.
  *     November 17, 2023   version 8.2.1
  *     May 8, 2024         version 9.0.0
  *     November 17, 2024   version 9.1.0
+ *     October 21, 2025    version 9.2.0
+ *     December 9, 2025    version 9.2.1
  * </pre>
  */
 
@@ -88,9 +90,9 @@ at the top-level directory.
  * Versions 4.x and earlier do not include a #define'd version numbers.
  */
 #define SUPERLU_DIST_MAJOR_VERSION     9
-#define SUPERLU_DIST_MINOR_VERSION     1
-#define SUPERLU_DIST_PATCH_VERSION     0
-#define SUPERLU_DIST_RELEASE_DATE      "November 10, 2024"
+#define SUPERLU_DIST_MINOR_VERSION     2
+#define SUPERLU_DIST_PATCH_VERSION     1
+#define SUPERLU_DIST_RELEASE_DATE      "December 9, 2025"
 
 #include "superlu_dist_config.h"
 
@@ -317,11 +319,11 @@ static const int RD_U=4;	/* MPI tag for lsum in U-solve*/
 #ifndef MAGMA_CONST
 #define MAGMA_CONST
 
-#define DIM_X  32
-#define DIM_Y  16
-
-// #define DIM_X  16
+// #define DIM_X  32     // If DIM_X*DIM_Y is large, trisolve results are wrong on Perlmutter when nrhs>1. (gemm_device_dlsum_bmod_stridedB and gemm_device_dlsum_fmod give wrong results) 
 // #define DIM_Y  16
+
+#define DIM_X  16  
+#define DIM_Y  16
 
 #define DIM_XA  DIM_X
 #define DIM_YA  DIM_Y
@@ -340,7 +342,7 @@ static const int RD_U=4;	/* MPI tag for lsum in U-solve*/
 #define THR_N ( BLK_N / DIM_Y )
 
 #define fetch(A, m, n, bound) offs_d##A[min(n*LD##A+m, bound)]
-#define fma(A, B, C) C += (A*B)
+#define FMA(A, B, C) C += (A*B)
 #endif
 /*---- end MAGMA ----*/
 
@@ -715,14 +717,14 @@ typedef struct {
     char superlu_rankorder[4]; /* Z-major or XY-majir order in 3D grid */
     char superlu_lbs[4]; /* etree load balancing strategy in 3D algorithm */
     int superlu_n_gemm; /* one of GEMM offload criteria; see sp_ienv(7) */
-    int superlu_max_buffer_size; /* max. buffer size on GPU; see sp_ienv(8) */
+    int_t superlu_max_buffer_size; /* max. buffer size on GPU; see sp_ienv(8) */
     int superlu_num_gpu_streams; /* number of GPU streams; see sp_ienv(9) */
     int superlu_acc_offload; /* whether to offload work to GPU; see sp_ienv(10) */
     int batchCount;     /* number of systems in the batched interface 
 			   0 : not to use batch interface (default)    */
-    yes_no_t      SymPattern;      /* symmetric factorization          */
-    yes_no_t      Use_TensorCore;  /* Use Tensor Core or not  */
-    yes_no_t      Algo3d;          /* use 3D factorization/solve algorithms */
+    yes_no_t  SymPattern;      /* symmetric factorization          */
+    yes_no_t  Use_TensorCore;  /* Use Tensor Core or not  */
+    yes_no_t  Algo3d;          /* Python inteface uses this to flag whether to use 3D factorization/solve algorithms */
 } superlu_dist_options_t;
 
 typedef struct {
@@ -1003,6 +1005,8 @@ typedef struct xtrsTimer_t
     double tfs_compute;
     double tfs_comm;
     double trs_comm_z;
+    double t_gather_x;
+    double t_init_b;
     double t_backwardSolve;
     double tbs_compute;
     double tbs_comm;
@@ -1056,6 +1060,8 @@ extern int    sp_coletree_dist (int_t *, int_t *, int_t *, int_t, int_t, int_t *
 extern void   get_perm_c_dist(int, int, SuperMatrix *, int *);
 extern void   get_perm_c_batch(superlu_dist_options_t *options,	int batchCount,
 			       handle_t  *SparseMatrix_handles, int **CpivPtr);
+extern void   get_perm_c_vbatch(superlu_dist_options_t *options, int batchCount,
+                   handle_t  *SparseMatrix_handles, int **CpivPtr);
 extern void   at_plus_a_dist(const int_t, const int_t, int_t *, int_t *,
 			     int_t *, int_t **, int_t **);
 extern void   getata_dist(const int_t m, const int_t n, const int_t nz, int_t *colptr, int_t *rowind,
@@ -1100,7 +1106,7 @@ extern int_t estimate_bigu_size (int_t, int_t **, Glu_persist_t *,
 /* Auxiliary routines */
 extern double SuperLU_timer_ (void);
 extern void   superlu_abort_and_exit_dist(char *);
-extern int    sp_ienv_dist (int, superlu_dist_options_t *);
+extern int_t  sp_ienv_dist (int, superlu_dist_options_t *);
 extern void   ifill_dist (int *, int, int);
 extern void   super_stats_dist (int_t, int_t *);
 extern void  get_diag_procs(int_t, Glu_persist_t *, gridinfo_t *, int_t *,
@@ -1177,6 +1183,7 @@ extern int_t get_gpublas_nb (void);
 extern int_t get_num_gpu_streams (void);
 extern int getnGPUStreams(void);
 extern int get_mpi_process_per_gpu (void);
+extern int sizeof_int_t(void);
 /*to print out various statistics from GPU activities*/
 extern void printGPUStats(int nsupers, SuperLUStat_t *stat, gridinfo3d_t*);
 #endif
@@ -1267,7 +1274,7 @@ extern SupernodeToGridMap_t* createSuperGridMap(int_t nsuper,int_t maxLvl, int_t
 extern int_t *createSupernode2TreeMap(int_t nsupers, int_t maxLvl, int_t *gNodeCount, int_t **gNodeLists);
 extern void allocBcastArray(void **array, int_t size, int root, MPI_Comm comm);
 extern void allocBcastLargeArray(void **array, int64_t size, int root, MPI_Comm comm);
-extern int_t* create_iperm_c_supno(int_t nsupers, superlu_dist_options_t *options, Glu_persist_t *Glu_persist, int_t *etree, int_t** Lrowind_bc_ptr, int_t** Ufstnz_br_ptr, gridinfo3d_t *grid3d);
+extern int_t* create_iperm_c_supno(int_t nsupers, int n, superlu_dist_options_t *options, Glu_persist_t *Glu_persist, int_t *etree, int_t** Lrowind_bc_ptr, int_t** Ufstnz_br_ptr, gridinfo3d_t *grid3d);
 extern gEtreeInfo_t fillEtreeInfo( int_t nsupers, int_t* setree, treeList_t *treeList);
 extern sForest_t **compute_sForests(int_t nsupers,  Glu_persist_t *Glu_persist, int_t *etree, gridinfo3d_t *grid3d);
 
@@ -1296,7 +1303,7 @@ extern int* getBmod3d(int_t treeId, int_t nlb, sForest_t* sforest, int_t* xsup, 
 extern int* getBmod3d_newsolve(int_t nlb, int_t nsupers, int* supernodeMask, int_t* xsup, int_t **Ufstnz_br_ptr, gridinfo_t * grid);
 
 // permutation from superLU default
-extern int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *,
+extern int_t* getPerm_c_supno(int_t nsupers, int n, superlu_dist_options_t *,
 			      int_t *etree, Glu_persist_t *Glu_persist,
 			      int_t** Lrowind_bc_ptr, int_t** Ufstnz_br_ptr,
 			      gridinfo_t *);

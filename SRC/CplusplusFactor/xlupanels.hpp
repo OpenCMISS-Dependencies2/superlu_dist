@@ -358,7 +358,7 @@ struct xLUstruct_t
     SCT_t *SCT;
     superlu_dist_options_t *options;
     SuperLUStat_t *stat;
-
+    
     // Adding more variables for factorization
     trf3dpartitionType<Ftype> *trf3Dpartition;
     int_t maxLvl;
@@ -445,7 +445,7 @@ struct xLUstruct_t
 
     ~xLUstruct_t()
     {
-        superlu_acc_offload = sp_ienv_dist(10, options); //get_acc_offload();
+        superlu_acc_offload = get_acc_offload(options);
 
         /* Yang: Deallocate the lPanelVec[i] and uPanelVec[i] here instead of using destructors ~lpanel_t or ~upanel_t,
         as xlpanel_t/upanel_t is used for holding temporary communication buffers as well. Note that lPanelVec[i].val is not deallocated here as it's pointing to the L data in the C code*/
@@ -494,8 +494,10 @@ struct xLUstruct_t
 
         delete[] lPanelVec;
         delete[] uPanelVec;
-        delete [] uPanelVec_GPU;
-        delete [] lPanelVec_GPU;
+        if (superlu_acc_offload){
+            delete [] uPanelVec_GPU;
+            delete [] lPanelVec_GPU;
+        }
 
 
         /* free diagonal L and U blocks */
@@ -724,4 +726,5 @@ struct xLUstruct_t
     int_t dDFactPSolveGPU(int_t k, int_t handle_offset, int buffer_offset, diagFactBufs_type<Ftype>** dFBufs);
 #endif
 };
+// end xLUstruct_t{}
 

@@ -123,7 +123,7 @@ main (int argc, char *argv[])
     int lookahead, colperm, rowperm, ir;
     int iam, info, ldb, ldx, nrhs, ii, omp_mpi_level;
     char **cpp, c, *suffix;
-    FILE *fp, *fopen ();
+    FILE *fp;
     extern int cpp_defs ();
 
     nprow = 1;            /* Default process rows.      */
@@ -289,7 +289,6 @@ main (int argc, char *argv[])
        options.DiagInv           = NO;
      */
     set_default_options_dist (&options);
-    options.Algo3d = YES;
     options.IterRefine = SLU_SINGLE;
 #if 0
     options.RowPerm = NOROWPERM;

@@ -613,7 +613,7 @@ void dDumpLblocks3D(int_t nsupers, gridinfo3d_t *grid3d,
     int_t *index;
     double *nzval;
 	char filename[256];
-	FILE *fp, *fopen();
+	FILE *fp;
 	gridinfo_t *grid = &(grid3d->grid2d);
 	int iam = grid->iam;
 	int iam3d = grid3d->iam;
@@ -1464,8 +1464,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 			because perm_r[] and/or perm_c[] is changed.    */
 			if ( options->SolveInitialized == YES ) { /* Initialized before */
 				dSolveFinalize(options, SOLVEstruct); /* Clean up structure */
-				pdgstrs_delete_device_lsum_x(SOLVEstruct);
-				options->SolveInitialized = NO;   /* Reset the solve state */
+				if (get_acc_solve()) pdgstrs_delete_device_lsum_x(SOLVEstruct);
 			}
 			}
 
@@ -1556,8 +1555,7 @@ if (get_acc_solve()){
 			because perm_r[] and/or perm_c[] is changed.    */
 			if ( options->SolveInitialized == YES ) { /* Initialized before */
 				dSolveFinalize(options, SOLVEstruct); /* Clean up structure */
-				pdgstrs_delete_device_lsum_x(SOLVEstruct);
-				options->SolveInitialized = NO;   /* Reset the solve state */
+				if (get_acc_solve()) pdgstrs_delete_device_lsum_x(SOLVEstruct);
 			}
 			}
 
@@ -1838,7 +1836,7 @@ if (get_acc_solve()){
 				/* Deallocate the storage associated with SOLVEstruct1 */
 				if (nrhs > 1)
 					{
-					pdgstrs_delete_device_lsum_x(SOLVEstruct1);
+					if (get_acc_solve()) pdgstrs_delete_device_lsum_x(SOLVEstruct1);
 					pxgstrs_finalize (SOLVEstruct1->gstrs_comm);
 					SUPERLU_FREE (SOLVEstruct1);
 					}
@@ -2012,7 +2010,7 @@ if (get_acc_solve()){
 				/* Deallocate the storage associated with SOLVEstruct1 */
 				if (nrhs > 1)
 					{
-					pdgstrs_delete_device_lsum_x(SOLVEstruct1);
+					if (get_acc_solve()) pdgstrs_delete_device_lsum_x(SOLVEstruct1);
 					pxgstrs_finalize (SOLVEstruct1->gstrs_comm);
 					SUPERLU_FREE (SOLVEstruct1);
 					}

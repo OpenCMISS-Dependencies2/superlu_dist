@@ -63,6 +63,8 @@ at the top-level directory.
 #define gpuEventCreate cudaEventCreate
 #define gpuEventRecord cudaEventRecord
 #define gpuMemGetInfo cudaMemGetInfo
+#define gpuDeviceGetAttribute cudaDeviceGetAttribute
+#define gpuDeviceAttributeClockRate cudaDevAttrClockRate
 #define gpuOccupancyMaxPotentialBlockSize cudaOccupancyMaxPotentialBlockSize
 #define gpuEventElapsedTime cudaEventElapsedTime
 #define gpuDeviceReset cudaDeviceReset
@@ -112,6 +114,7 @@ at the top-level directory.
 #include "hip/hip_runtime_api.h"
 #include "hip/hip_runtime.h"
 #include <hipblas/hipblas.h>
+#include <hipblas/hipblas-version.h>
 
 // #include "roctracer_ext.h"    // need to pass the include dir directly to HIP_HIPCC_FLAGS
 // // roctx header file
@@ -151,6 +154,8 @@ at the top-level directory.
 #define gpuEventCreate hipEventCreate
 #define gpuEventRecord hipEventRecord
 #define gpuMemGetInfo hipMemGetInfo
+#define gpuDeviceGetAttribute hipDeviceGetAttribute
+#define gpuDeviceAttributeClockRate hipDeviceAttributeClockRate
 #define gpuOccupancyMaxPotentialBlockSize hipOccupancyMaxPotentialBlockSize
 #define gpuEventElapsedTime hipEventElapsedTime
 #define gpuDeviceReset hipDeviceReset
@@ -176,7 +181,11 @@ at the top-level directory.
 #define  gpublasZgemm hipblasZgemm
 #define  gpublasCgemm hipblasCgemm
 #define  GPUBLAS_OP_N HIPBLAS_OP_N
+#if hipblasVersionMajor >= 3
+#define  gpuDoubleComplex hipDoubleComplex
+#else
 #define  gpuDoubleComplex hipblasDoubleComplex
+#endif
 #define  gpuRuntimeGetVersion hipRuntimeGetVersion
 #define  gpuGetLastError hipGetLastError
 #define  threadIdx_x hipThreadIdx_x

@@ -191,7 +191,7 @@ int_t symbfact
     Glu_freeable->nnzLU = nnzL + nnzU - min_mn;	
     /* Apply perm_r to L; Compress LSUB array. */
     nnzLSUB = fixupL_dist(min_mn, perm_r, Glu_persist, Glu_freeable);
-
+#if ( PRNTlevel>=1 )
     if ( !pnum && (options->PrintStat == YES)) {
 	nnzLU = nnzL + nnzU - min_mn;				   
 	printf("\tmatrix dimension  " IFMT "\n", min_mn);
@@ -202,6 +202,7 @@ int_t symbfact
 	printf("\tfill ratio        " "%8.1f" "\n", (float)nnzLU/nnz);
 	printf("\tnonzeros in LSUB  " IFMT "\n", nnzLSUB);
     }
+#endif	
     SUPERLU_FREE(iwork);
     SUPERLU_FREE(i32work);
 
@@ -403,9 +404,8 @@ static int_t snode_dfs
  * Data structure
  * ==============
  *   (lsub, xlsub):
- *      lsub[*] contains the compressed subscripts of the supernodes;
- *      xlsub[j] points to the starting location of the j-th column in
- *               lsub[*]; 
+ *      lsub[*] contains the compressed L subscripts of the supernodes, not sorted;
+ *      xlsub[j] points to the starting location of the j-th column in lsub[*]; 
  *	Storage: original row subscripts in A.
  *
  *      During the course of symbolic factorization, we also use
@@ -764,7 +764,7 @@ static int_t pivotL
  * NOTE
  * ====
  *   For each supernodal segment, we only store the index of the first
- *   nonzero index, rather than the indices of the whole segment, because
+ *   nonzero, rather than the indices of the whole segment, because
  *   those indices can be generated from first nonzero and supnodal
  *   representative.
  *   Therefore, for G(U), we store the "skeleton" of it.

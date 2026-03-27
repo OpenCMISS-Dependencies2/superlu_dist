@@ -39,8 +39,9 @@ int_t xLUstruct_t<Ftype>::dDFactPSolveGPU(int_t k, int_t offset, diagFactBufs_ty
         lPanelVec[g2lCol(k)].diagFactorCuSolver(k,
                                                 cusolverH, cuStream,
                                                 A_gpu.diagFactWork[offset], A_gpu.diagFactInfo[offset], // CPU pointers
-                                                A_gpu.dFBufs[offset], ksupc,                            // CPU pointers
+                                                A_gpu.dFBufs[offset], ksupc, // CPU pointers
                                                 thresh, xsup, options, stat, info);
+	stat->ops[FACT] += 2.0/3.0 * ksupc * ksupc;
     }
 
     // CHECK_MALLOC(iam, "after diagFactorCuSolver()");
@@ -64,6 +65,10 @@ int_t xLUstruct_t<Ftype>::dDFactPSolveGPU(int_t k, int_t offset, diagFactBufs_ty
             cubHandle, cuStream,
             ksupc, A_gpu.dFBufs[offset], ksupc);
         cudaStreamSynchronize(cuStream); // synchronize befpre broadcast
+    if(uPanelVec[g2lRow(k)].nzvalSize()>0){
+	int ncols = uPanelVec[g2lRow(k)].nzcols();
+	stat->ops[FACT] += ksupc*ksupc * ncols; // Sherry added 5/4/25
+    }
     }
 
     if (mycol == kcol(k))
@@ -72,6 +77,10 @@ int_t xLUstruct_t<Ftype>::dDFactPSolveGPU(int_t k, int_t offset, diagFactBufs_ty
             cubHandle, cuStream,
             ksupc, A_gpu.dFBufs[offset], ksupc);
         cudaStreamSynchronize(cuStream);
+	if(lPanelVec[g2lCol(k)].nzvalSize()>0){
+	int nrows = lPanelVec[g2lCol(k)].nzrows();
+	stat->ops[FACT] += ksupc*ksupc * nrows; // Sherry added 5/4/25
+    }
     }
     SCT->tDiagFactorPanelSolve += (SuperLU_timer_() - t0);
 

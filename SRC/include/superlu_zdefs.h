@@ -981,6 +981,9 @@ extern void  zreadMM_dist(FILE *, int_t *, int_t *, int_t *,
 	                  doublecomplex **, int_t **, int_t **);
 extern int  zread_binary(FILE *, int_t *, int_t *, int_t *,
 	                  doublecomplex **, int_t **, int_t **);
+extern int
+zwrite_binary_withname(int_t n, int_t nnz,
+	      doublecomplex *values, int_t *rowind, int_t *colptr, char *newfile);                      
 
 extern void validateInput_pzgssvx3d(superlu_dist_options_t *, SuperMatrix *A,
        int ldb, int nrhs, gridinfo3d_t *, int *info);
@@ -1008,6 +1011,7 @@ extern void  zPrintUblocks(int, int_t, gridinfo_t *, Glu_persist_t *,
 			   zLocalLU_t *);
 extern void  zPrint_CompCol_Matrix_dist(SuperMatrix *);
 extern void  zPrint_CompCol_triplet(SuperMatrix *);
+extern void  file_zPrint_NCPformat_triplet(FILE *, SuperMatrix *);    
 extern void  zPrint_Dense_Matrix_dist(SuperMatrix *);
 extern int   zPrint_CompRowLoc_Matrix_dist(SuperMatrix *);
 extern int   file_zPrint_CompRowLoc_Matrix_dist(FILE *fp, SuperMatrix *A);

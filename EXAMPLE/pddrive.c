@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     int      nprow, npcol, lookahead, colperm, rowperm, ir, symbfact, batch;
     int      iam, info, ldb, ldx, nrhs;
     char     **cpp, c, *postfix;;
-    FILE *fp, *fopen();
+    FILE *fp;
     int cpp_defs();
     int ii, omp_mpi_level;
     int ldumap, myrank, p; /* The following variables are used for batch solves */
@@ -115,13 +115,23 @@ int main(int argc, char *argv[])
         options.PrintStat         = YES;
 	options.DiagInv           = NO;
      */
-    set_default_options_dist(&options);
+    set_default_options_dist(&options); 
+
+
+    // //The following options test ILU    
+    // options.IterRefine = SLU_DOUBLE;
+    // options.lookahead_etree   = YES;
+    // options.ILU_level = 0;
+    // options.ReplaceTinyPivot  = YES;
+    // options.ColPerm = NATURAL;
+
+    
 #if 0
+    options.ParSymbFact = YES;
+    options.ColPerm = PARMETIS;
     options.RowPerm = LargeDiag_HWPM;
     options.IterRefine = NOREFINE;
-    options.ColPerm = NATURAL;
     options.Equil = NO;
-    options.ReplaceTinyPivot = YES;
 #endif
 
     /* Parse command line argv[], may modify default options */
@@ -174,7 +184,7 @@ int main(int argc, char *argv[])
     if (ir != -1) options.IterRefine = ir;
     if (symbfact != -1) options.ParSymbFact = symbfact;
 
-    int superlu_acc_offload = sp_ienv_dist(10, &options); //get_acc_offload();
+    int superlu_acc_offload = get_acc_offload(&options);
     
     /* In the batch mode: create multiple SuperLU grids,
         each grid solving one linear system. */
@@ -302,7 +312,6 @@ int main(int argc, char *argv[])
 		postfix = &((*cpp)[ii+1]);
 	}
     }
-    // printf("%s\n", postfix);
 
     /* ------------------------------------------------------------
        GET THE MATRIX FROM FILE AND SETUP THE RIGHT HAND SIDE.

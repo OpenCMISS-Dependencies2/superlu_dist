@@ -1,4 +1,4 @@
-# SuperLU_DIST (version 9.1.0)   <img align=center width="55" alt="superlu" src="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png">
+# SuperLU_DIST (version 9.2.0)   <img align=center width="55" alt="superlu" src="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png">
 
 [![Build Status](https://github.com/xiaoyeli/superlu_dist/actions/workflows/test.yml/badge.svg)](https://github.com/xiaoyeli/superlu_dist/actions/workflows/test.yml)
 [Nightly tests](http://my.cdash.org/index.php?project=superlu_dist)
@@ -8,12 +8,12 @@ A*X=B. It uses Gaussian elimination with static pivoting (GESP).
 Static pivoting is a technique that combines the numerical stability of
 partial pivoting with the scalability of Cholesky (no pivoting),
 to run accurately and efficiently on large numbers of processors.
-
 SuperLU_DIST is a parallel extension to the serial SuperLU library.
 It is targeted for the distributed memory parallel machines.
 SuperLU_DIST is implemented in ANSI C, with OpenMP for on-node parallelism
-and MPI for off-node communications. We are actively developing multi-GPU
-acceleration capabilities.
+and MPI for off-node communications. Numerical LU factorization and triangular solvers can be performed on multiple GPU nodes
+for Nvidia, AMD, and Intel GPUs.
+<!-- We are actively developing multi-GPU acceleration capabilities.
 <!-- Currently, the LU factorization and triangular solution routines, -->
 <!-- which are the most time-consuming part of the solution process,-->
 <!-- are parallelized. The other routines, such as static pivoting and -->
@@ -21,10 +21,21 @@ acceleration capabilities.
 <!-- This "alpha" release contains double-precision real and-->
 <!-- double-precision complex data types.-->
 
+The full documentation and publications can be found at this web site:
+https://portal.nersc.gov/project/sparse/superlu/
+
+In paticular, we highly recommend using the the latest 3D code, with example [EXAMPLE/pddrive3d.c](https://github.com/xiaoyeli/superlu_dist/blob/master/EXAMPLE/pddrive3.c),
+which significantly outpeforms the earlier 2D code (EXAMPLE/pddrive.c) both on GPUs and for strong scaling, 
+because it contains the novel 3D communication-avoiding algorithms
+This was released since Version 9.0.0. The [Release Note](https://github.com/xiaoyeli/superlu_dist/releases/tag/v9.0.0) and the companion [ACM TOMS paper](https://dl.acm.org/doi/full/10.1145/3577197)
+should serve as the Users' Guide.
+
+[EXAMPLE/README](EXAMPLE/README) shows how to run all the examples. 
+
 Table of Contents
 =================
 
-* [SuperLU_DIST (version 9.1.0)   <a href="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png" target="_blank" rel="nofollow"><img align="center" width="55" alt="superlu" src="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png" style="max-width:100%;"></a>](#superlu_dist-version-910--)
+* [SuperLU_DIST (version 9.2.0)   <a href="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png" target="_blank" rel="nofollow"><img align="center" width="55" alt="superlu" src="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png" style="max-width:100%;"></a>](#superlu_dist-version-920--)
 * [Directory structure of the source code](#directory-structure-of-the-source-code)
 * [Installation](#installation)
    * [Installation option 1: Using CMake build system.](#installation-option-1-using-cmake-build-system)
@@ -49,7 +60,7 @@ Table of Contents
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 
-# SuperLU_DIST (version 9.1.0)  <img align=center width="55" alt="superlu" src="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png">
+# SuperLU_DIST (version 9.2.0)  <img align=center width="55" alt="superlu" src="https://user-images.githubusercontent.com/11741943/103982988-5a9a9d00-5139-11eb-9ac4-a55e80a79f8d.png">
 
 [![Build Status](https://github.com/xiaoyeli/superlu_dist/actions/workflows/test.yml/badge.svg)](https://github.com/xiaoyeli/superlu_dist/actions/workflows/test.yml)
 [Nightly tests](http://my.cdash.org/index.php?project=superlu_dist)
@@ -212,6 +223,11 @@ or,
 `ctest -D Experimental`
 or,
 `ctest -D Nightly`
+
+In build/EXAMPLE/ directory, you can also type:
+'ctest'
+to run the examples.
+
 
 **NOTE:**
 The parallel execution in ctest is invoked by "mpiexec" command which is
@@ -557,4 +573,6 @@ Novembe 9, 2023     Version 8.2.0
 Novembe 17, 2023    Version 8.2.1
 May 8, 2024         Version 9.0.0
 November 10, 2024   Version 9.1.0
+October 21, 2025    Version 9.2.0
+December 9, 2025    Version 9.2.1
 ```

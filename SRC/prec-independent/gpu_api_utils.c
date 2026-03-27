@@ -16,13 +16,14 @@ at the top-level directory.
 #include "gpu_api_utils.h"
  void DisplayHeader()
 {
+#if ( PRNTlevel>=1 )    
     const int kb = 1024;
     const int mb = kb * kb;
     int version;
     // cout << "NBody.GPU" << endl << "=========" << endl << endl;
     
-    gpuRuntimeGetVersion( &version ); 
-    printf("GPU Driver version:   v %d\n",version);
+    gpuRuntimeGetVersion( &version );     
+    printf("GPU Runtime version:   v %d\n",version);
     //cout << "Thrust version: v" << THRUST_MAJOR_VERSION << "." << THRUST_MINOR_VERSION << endl << endl; 
 
     int devCount;
@@ -35,10 +36,10 @@ at the top-level directory.
         gpuGetDeviceProperties(&props, i);
         printf("%d : %s %d %d\n",i, props.name,props.major,props.minor );
         // cout << i << ": " << props.name << ": " << props.major << "." << props.minor << endl;
-        printf("  Global memory:   %ld mb \n", props.totalGlobalMem / mb);
+        printf("  Global memory:   %ld MiB \n", props.totalGlobalMem / mb);
         // cout << "  Global memory:   " << props.totalGlobalMem / mb << "mb" << endl;
-        printf("  Shared memory:   %ld kb \n", props.sharedMemPerBlock / kb ); //<<  << "kb" << endl;
-        printf("  Constant memory: %ld kb \n", props.totalConstMem / kb );
+        printf("  Shared memory:   %ld KiB \n", props.sharedMemPerBlock / kb ); //<<  << "kb" << endl;
+        printf("  Constant memory: %ld KiB \n", props.totalConstMem / kb );
         printf("  Block registers: %d \n\n", props.regsPerBlock );
 
         // to do these later
@@ -57,6 +58,7 @@ at the top-level directory.
         // cout << "  Max grid dimensions:  [ " << props.maxGridSize[0] << ", " << props.maxGridSize[1]  << ", " << props.maxGridSize[2] << " ]" << endl;
         // cout << endl;
     }
+#endif
 }
 
 

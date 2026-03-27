@@ -17,7 +17,7 @@ get_target_property(superlu_dist_soversion superlu_dist SOVERSION)
 set_target_properties(superlu_dist_python PROPERTIES VERSION ${superlu_dist_version})
 set_target_properties(superlu_dist_python PROPERTIES SOVERSION ${superlu_dist_soversion})
 target_link_libraries(superlu_dist_python superlu_dist)
-add_dependencies(superlu_dist_python config_f)
+# add_dependencies(superlu_dist_python config_f)
 
 set(PY_SCRIPT_SOURCE ${CMAKE_SOURCE_DIR}/PYTHON/pddrive.py)
 set(PY_SCRIPT_DEST ${CMAKE_BINARY_DIR}/PYTHON/pddrive.py)
@@ -46,14 +46,13 @@ add_custom_target(python
 
 add_dependencies(python superlu_dist_python)
 
-install(TARGETS superlu_dist_python
-# DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
-    LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
-    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
-)
+install(TARGETS superlu_dist_python DESTINATION "${INSTALL_LIB_DIR}")
+install(TARGETS superlu_dist_python DESTINATION "${INSTALL_LIB_DIR}/PYTHON")
 install(FILES pddrive.py DESTINATION "${INSTALL_LIB_DIR}/PYTHON")
 install(FILES pdbridge.py DESTINATION "${INSTALL_LIB_DIR}/PYTHON")
+install(FILES pddrive_worker.py DESTINATION "${INSTALL_LIB_DIR}/PYTHON")
+install(FILES pddrive_master.py DESTINATION "${INSTALL_LIB_DIR}/PYTHON")
+install(FILES GP_demo.py DESTINATION "${INSTALL_LIB_DIR}/PYTHON")
 
 
 

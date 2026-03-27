@@ -81,6 +81,7 @@ set(sources
   prec-independent/treeFactorization.c
   prec-independent/sec_structs.c  
   prec-independent/get_perm_c_batch.c
+  prec-independent/get_perm_c_vbatch.c
 )
 
 # Add all the BLAS routines: CplusplusFactor/supelu_blas.hpp needs all
@@ -164,8 +165,11 @@ if(enable_double)
     double/dtrfCommWrapper.c
     double/dsuperlu_blas.c
     double/pdgssvx3d_csc_batch.c # batch in CSC format
+    double/pdgssvx3d_csc_vbatch.c
     double/dequil_batch.c # batch in CSC format
+    double/dequil_vbatch.c
     double/dpivot_batch.c
+    double/dpivot_vbatch.c
   )
   
 if (TPL_ENABLE_CUDALIB)
@@ -269,7 +273,7 @@ if (TPL_ENABLE_CUDALIB)
     list(APPEND sources cuda/psgstrs_lsum_cuda.cu cuda/ssuperlu_gpu.cu)
 endif()
 if (HAVE_COMBBLAS)
-       list(APPEND sources single/s_c2cpp_GetHWPM.cpp double/dHWPM_CombBLAS.hpp)
+       list(APPEND sources single/s_c2cpp_GetHWPM.cpp single/sHWPM_CombBLAS.hpp)
 endif()
 
 endif() ########## enable single

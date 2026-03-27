@@ -59,6 +59,7 @@ at the top-level directory.
 	    = 9: number of GPU streams
 	    = 10: whether to offload computations to GPU or not
 	    = 11: whether to offload triangular solve to GPU or not
+	    = 12: whether to use the C++ code for factorization or not
 
    options (input) superlu_dist_options_t*
            The structure defines the input parameters to control
@@ -76,7 +77,7 @@ at the top-level directory.
 #include <stdio.h>
 #include "superlu_defs.h"
 
-int
+int_t
 sp_ienv_dist(int ispec, superlu_dist_options_t *options)
 {
     int i;
@@ -131,12 +132,17 @@ sp_ienv_dist(int ispec, superlu_dist_options_t *options)
 		return (options->superlu_n_gemm);
         case 8:
   	    ttemp = getenv ("SUPERLU_MAX_BUFFER_SIZE");
-	    if (ttemp) 
+	    if ( ttemp==NULL )ttemp = getenv("MAX_BUFFER_SIZE"); 
+	    if (ttemp) {
+#if defined (_LONGINT)
+		char *eptr;
+		return strtoll (ttemp, &eptr, 10);
+#else		
 		return atoi (ttemp);
-	    else if(getenv("MAX_BUFFER_SIZE")) 
-		return(atoi(getenv("MAX_BUFFER_SIZE")));
-	    else 
+#endif
+	    } else {
 		return (options->superlu_max_buffer_size);
+	    }
          case 9:
   	    ttemp = getenv ("SUPERLU_NUM_GPU_STREAMS");
 	    if (ttemp) 
@@ -153,6 +159,16 @@ sp_ienv_dist(int ispec, superlu_dist_options_t *options)
                 return atoi (ttemp);
             else
                 return 0;  // default
+         case 12:
+	    ttemp = getenv ("GPU3DVERSION");
+            if (ttemp)
+                return atoi (ttemp);
+            else
+#ifdef GPU_ACC            
+                return 1;  // default for GPU: use C++ code
+#else 
+                return 0;  // default for CPU: use earlier C code
+#endif
     }
 
     /* Invalid value for ISPEC */

@@ -1,20 +1,21 @@
 #!/bin/bash
-#SBATCH -A m2957
+#SBATCH -A m4872
 #SBATCH -C gpu
-#SBATCH -q regular
-#SBATCH -t 1:00:00
-#SBATCH -N 64
+#SBATCH -q debug
+#SBATCH -t 0:30:00
+#SBATCH -N 1
 #SBATCH --ntasks-per-node=4
-#SBATCH --gpus 256
-#SBATCH --mail-user=liuyangzhuan@lbl.gov
+#SBATCH --gpus 4
 #SBATCH --mail-type=BEGIN
 #SBATCH -e ./tmp.err
-#
+
+
+
 #modules:
 module load PrgEnv-gnu
 module load cmake
-module load cudatoolkit/12.2
-module load cray-libsci/23.12.5
+module load cudatoolkit
+module load cray-libsci
 module load python/3.11
 ulimit -s unlimited
 #MPI settings:
@@ -40,7 +41,7 @@ export SUPERLU_ACC_SOLVE=0 # whether to do CPU or GPU triangular solve
 export SUPERLU_BIND_MPI_GPU=1 # assign GPU based on the MPI rank, assuming one MPI per GPU
 export SUPERLU_MAXSUP=256 # max supernode size
 export SUPERLU_RELAX=64  # upper bound for relaxed supernode size
-export SUPERLU_MAX_BUFFER_SIZE=10000000 ## 500000000 # buffer size in words on GPU
+export SUPERLU_MAX_BUFFER_SIZE=100000000 ## 500000000 # buffer size in words on GPU
 export SUPERLU_NUM_LOOKAHEADS=2   ##4, must be at least 2, see 'lookahead winSize'
 export SUPERLU_NUM_GPU_STREAMS=1
 export SUPERLU_N_GEMM=6000 # FLOPS threshold divide workload between CPU and GPU
@@ -53,7 +54,7 @@ export SUPERLU_MPI_PROCESS_PER_GPU=$nmpipergpu # nmpipergpu>1 can better saturat
 ## The following is NVSHMEM settings for multi-GPU trisolve 
 ################################################# 
 # module load nvshmem/2.11.0
-NVSHMEM_HOME=/global/cfs/cdirs/m3894/lib/PrgEnv-gnu/nvshmem_src_2.8.0-3/build/
+NVSHMEM_HOME=/global/cfs/cdirs/m2957/lib/lib/PrgEnv-gnu/nvshmem_src_2.8.0-3/build/
 export NVSHMEM_USE_GDRCOPY=1
 export NVSHMEM_MPI_SUPPORT=1
 export MPI_HOME=${MPICH_DIR}
@@ -94,10 +95,27 @@ export MPICH_MAX_THREAD_SAFETY=multiple
 ################################################# 
 
 
+## The following sets the file names for the superlu file interface
+################################################# 
+export CONTROL_FILE="control.txt"  ## this file is used to pass flags and parameters between the master driver and superlu_dist workers 
+export DATA_FILE="data.bin" ## this file is used to pass covariance matrix and rhs from the master driver to superlu_dist workers 
+export RESULT_FILE="result.bin" ## this file is used to pass solution vector and logdet from superlu_dist workers to the master driver 
+#################################################
 
 
-srun -N 1 -n $NCORE_VAL_TOT  -c $TH_PER_RANK --cpu_bind=cores python ../PYTHON/pddrive.py -c $NCOL -r $NROW -d $NPZ -s 0 -q 2 -m 1 -p 0 -i 0 
+# ############### use mpirun to call the python driver 
+# srun -N 4 -n $NCORE_VAL_TOT  -c $TH_PER_RANK --cpu_bind=cores python -u ../PYTHON/pddrive.py -c $NCOL -r $NROW -d $NPZ -s 1 -q 5 -m 1 -p 0 -i 0 -b 0 | tee a.out_singlelaunch 
 
+
+############## sequentially call the python driver pddrive_master.py, but parallelly launching the workers pddrive_worker.py 
+rm -rf $CONTROL_FILE
+rm -rf $DATA_FILE
+rm -rf $RESULT_FILE
+srun -N $NODE_VAL -n $NCORE_VAL_TOT  -c $TH_PER_RANK --cpu_bind=cores python -u ../PYTHON/pddrive_worker.py -c $NCOL -r $NROW -d $NPZ -s 0 -q 4 -m 1 -p 0 -i 0 -b 0 | tee a.out_seperatelaunch_worker  &
+python -u ../PYTHON/pddrive_master.py | tee a.out_seperatelaunch_master 
+
+
+# srun -N 64 -n $NCORE_VAL_TOT  -c $TH_PER_RANK --cpu_bind=cores python -u ../PYTHON/pddrive_worker.py -c $NCOL -r $NROW -d $NPZ -s 1 -q 5 -m 1 -p 0 -i 0 -b 0 | tee a.out_seperatelaunch_worker  
 
 
 

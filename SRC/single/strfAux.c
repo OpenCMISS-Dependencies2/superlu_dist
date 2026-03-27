@@ -64,7 +64,7 @@ void sInit_HyP(superlu_dist_options_t *options, HyP_t* HyP, sLocalLU_t *Llu, int
     }
 
     HyP->last_offload = -1;
-    HyP->superlu_acc_offload = sp_ienv_dist(10, options); // get_acc_offload();
+    HyP->superlu_acc_offload = get_acc_offload(options);
 
     HyP->nGPUStreams =0;
 } /* sInit_HyP */
@@ -544,7 +544,7 @@ float* sgetBigU(superlu_dist_options_t *options,
     return bigU;
 } /* sgetBigU */
 
-#if 0
+#if 0 //---------- not used anymore
 /* YL: Initialize 3Dpartition using only LUstruct on grid 0. Note that this is a function modifed based on dinitTrf3Dpartition */
 strf3Dpartition_t* sinitTrf3DpartitionLUstructgrid0(int_t n, superlu_dist_options_t *options,
 				      sLUstruct_t *LUstruct, gridinfo3d_t * grid3d
@@ -568,7 +568,7 @@ strf3Dpartition_t* sinitTrf3DpartitionLUstructgrid0(int_t n, superlu_dist_option
     int_t* iperm_c_supno;
     int_t *xsup;
     if (!grid3d->zscp.Iam){
-        int_t* perm_c_supno = getPerm_c_supno(nsupers, options,
+        int_t* perm_c_supno = getPerm_c_supno(nsupers, n, options,
                                          LUstruct->etree,
     	   		                 LUstruct->Glu_persist,
 		                         LUstruct->Llu->Lrowind_bc_ptr,
@@ -939,9 +939,10 @@ strf3Dpartition_t* sinitTrf3Dpartition_allgrid(int_t n, superlu_dist_options_t *
 #endif
     return trf3Dpartition;
 } /* sinitTrf3Dpartition_allgrid */
-#endif 
 
-#if 0
+#endif //---------- not used anymore
+
+#if 0 //---------- not used anymore
 /* This routine is called by all 3D processes, in driver pdgssvx3d(). */
 strf3Dpartition_t* sinitTrf3Dpartition(int_t nsupers,
 				      superlu_dist_options_t *options,
@@ -955,7 +956,7 @@ strf3Dpartition_t* sinitTrf3Dpartition(int_t nsupers,
 #if ( DEBUGlevel>=1 )
     CHECK_MALLOC (iam, "Enter sinitTrf3Dpartition()");
 #endif
-    int_t* perm_c_supno = getPerm_c_supno(nsupers, options,
+    int_t* perm_c_supno = getPerm_c_supno(nsupers, n, options,
                                          LUstruct->etree,
     	   		                 LUstruct->Glu_persist,
 		                         LUstruct->Llu->Lrowind_bc_ptr,
@@ -1125,7 +1126,8 @@ strf3Dpartition_t* sinitTrf3Dpartition(int_t nsupers,
 #endif
     return trf3Dpartition;
 } /* end sinitTrf3Dpartition */
-#endif
+
+#endif //---------- not used anymore
 
 /* Free memory allocated for trf3Dpartition structure. Sherry added this routine */
 void sDestroy_trf3Dpartition(strf3Dpartition_t *trf3Dpartition)

@@ -375,7 +375,7 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
     float msg_vol = 0, msg_cnt = 0;
     double comm_wait_time = 0.0;
     /* Record GEMM dimensions and times */
-    FILE *fopen(), *fgemm;
+    FILE *fgemm;
     int gemm_count = 0;
     typedef struct {
 	int m, n, k;
@@ -801,7 +801,7 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
 #endif
 
 #ifdef GPU_ACC /*-- use GPU --*/
-    int superlu_acc_offload = sp_ienv_dist(10, options); //get_acc_offload();
+    int superlu_acc_offload = get_acc_offload(options);
 
     int gpublas_nb = get_gpublas_nb(); // default 64
     int nstreams = get_num_gpu_streams (); // default 8

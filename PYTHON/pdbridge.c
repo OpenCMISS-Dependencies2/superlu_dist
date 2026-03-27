@@ -89,10 +89,10 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
     double   *berr;
     double   *b, *xtrue;
     int    m1, n1;
-    int      nprow, npcol, lookahead, colperm, rowperm, ir, symbfact, batch, sympattern;
+    int      nprow, npcol, lookahead, colperm, rowperm, ir, symbfact, batch, sympattern, printstat, tinyp;
     int      iam, info, ldb, ldx;
     char     **cpp, c, *postfix;;
-    FILE *fp, *fopen();
+    FILE *fp;
     int cpp_defs();
     int ii, omp_mpi_level;
     int ldumap, myrank, p; /* The following variables are used for batch solves */
@@ -114,7 +114,9 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
     ir = -1;
     symbfact = -1;
     sympattern=0;
+    printstat=0;
     batch = 0;
+    tinyp = 0;
 
     /* ------------------------------------------------------------
        INITIALIZE MPI ENVIRONMENT.
@@ -153,6 +155,8 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
     options.Equil = NO;
     options.ReplaceTinyPivot = YES;
 #endif
+    // (slu_obj->options).ReplaceTinyPivot = YES;
+    (slu_obj->options).PrintStat = NO;
 
     /* Parse command line argv[], may modify default options */
     for (cpp = argv+1; *cpp; ++cpp) {
@@ -163,6 +167,7 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
             case 'h':
                 printf("Options:\n");
                 printf("\t-m <int>: symmetric pattern  (default %4d)\n", sympattern);
+                printf("\t-t <int>: print statistics   (default %4d)\n", printstat);
                 printf("\t-r <int>: process rows       (default %4d)\n", nprow);
                 printf("\t-c <int>: process columns    (default %4d)\n", npcol);
                 printf("\t-p <int>: row permutation    (default %4d)\n", (slu_obj->options).RowPerm);
@@ -190,6 +195,10 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
             case 'b': batch = atoi(*cpp);
                     break;
             case 'm': sympattern = atoi(*cpp);
+                    break;                
+            case 't': printstat = atoi(*cpp);
+                    break;               
+            case 'n': tinyp = atoi(*cpp);
                     break;                    
 	    }
 	} else { /* Last arg is considered a filename */
@@ -207,8 +216,11 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
     if (ir != -1) (slu_obj->options).IterRefine = ir;
     if (symbfact != -1) (slu_obj->options).ParSymbFact = symbfact;
     if (sympattern==1) (slu_obj->options).SymPattern = YES;
+    if (tinyp==1) (slu_obj->options).ReplaceTinyPivot = YES;
+    if (printstat==1) (slu_obj->options).PrintStat = YES;
+    (slu_obj->options).Algo3d = NO;
 
-    int superlu_acc_offload = sp_ienv_dist(10, &(slu_obj->options)); //get_acc_offload();
+    int_t superlu_acc_offload = get_acc_offload(&(slu_obj->options));
     
     /* In the batch mode: create multiple SuperLU grids,
         each grid solving one linear system. */
@@ -225,10 +237,10 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
             double t1 = SuperLU_timer_();
             gpuFree(0);
             double t2 = SuperLU_timer_();
-            if(!myrank)printf("first gpufree time: %7.4f\n",t2-t1);
+            if(!myrank && printstat==1)printf("first gpufree time: %7.4f\n",t2-t1);
             gpublasHandle_t hb;
             gpublasCreate(&hb);
-            if(!myrank)printf("first blas create time: %7.4f\n",SuperLU_timer_()-t2);
+            if(!myrank && printstat==1)printf("first blas create time: %7.4f\n",SuperLU_timer_()-t2);
             gpublasDestroy(hb);
 	}
 #endif
@@ -238,19 +250,19 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
 	MPI_Query_thread(&omp_mpi_level);
         switch (omp_mpi_level) {
           case MPI_THREAD_SINGLE:
-		printf("MPI_Query_thread with MPI_THREAD_SINGLE\n");
+		if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_SINGLE\n");
 		fflush(stdout);
 	        break;
           case MPI_THREAD_FUNNELED:
-		printf("MPI_Query_thread with MPI_THREAD_FUNNELED\n");
+		if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_FUNNELED\n");
 		fflush(stdout);
 	        break;
           case MPI_THREAD_SERIALIZED:
-		printf("MPI_Query_thread with MPI_THREAD_SERIALIZED\n");
+		if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_SERIALIZED\n");
 		fflush(stdout);
 	        break;
           case MPI_THREAD_MULTIPLE:
-		printf("MPI_Query_thread with MPI_THREAD_MULTIPLE\n");
+		if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_MULTIPLE\n");
 		fflush(stdout);
 	        break;
         }
@@ -262,21 +274,21 @@ void pdbridge_init2d(int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr ,
     if ( !iam ) {
 	int v_major, v_minor, v_bugfix;
 #ifdef __INTEL_COMPILER
-	printf("__INTEL_COMPILER is defined\n");
+	if(printstat==1)printf("__INTEL_COMPILER is defined\n");
 #endif
-	printf("__STDC_VERSION__ %ld\n", __STDC_VERSION__);
+	if(printstat==1)printf("__STDC_VERSION__ %ld\n", __STDC_VERSION__);
 
 	superlu_dist_GetVersionNumber(&v_major, &v_minor, &v_bugfix);
-	printf("Library version:\t%d.%d.%d\n", v_major, v_minor, v_bugfix);
+	if(printstat==1)printf("Library version:\t%d.%d.%d\n", v_major, v_minor, v_bugfix);
 
 	// printf("Input matrix file:\t%s\n", *cpp);
-        printf("Process grid:\t\t%d X %d\n", (int)(slu_obj->grid).nprow, (int)(slu_obj->grid).npcol);
+        if(printstat==1)printf("Process grid:\t\t%d X %d\n", (int)(slu_obj->grid).nprow, (int)(slu_obj->grid).npcol);
 	fflush(stdout);
     }
 
     /* print solver options */
     if (!iam) {
-	print_options_dist(&(slu_obj->options));
+	if(printstat==1)print_options_dist(&(slu_obj->options));
 	fflush(stdout);
     }
 
@@ -329,10 +341,10 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
     double *b, *xtrue;
     int_t m1, n1;
     int nprow, npcol, npdep;
-    int equil, colperm, rowperm, ir, lookahead, sympattern, symbfact;
+    int equil, colperm, rowperm, ir, lookahead, sympattern, symbfact, printstat, tinyp;
     int iam, info, ldb, ldx;
     char **cpp, c, *suffix;
-    FILE *fp, *fopen ();
+    FILE *fp;
     extern int cpp_defs ();
     int ii, omp_mpi_level, batchCount = 0;
     int*    usermap;     /* The following variables are used for batch solves */
@@ -355,6 +367,8 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
     lookahead = -1;
     symbfact = -1;
     sympattern=0;    
+    printstat=0;    
+    tinyp=0;    
 
     /* ------------------------------------------------------------
        INITIALIZE MPI ENVIRONMENT.
@@ -413,6 +427,10 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
             case 's': symbfact = atoi(*cpp);
                     break;                      
             case 'm': sympattern = atoi(*cpp);
+                    break;               
+            case 't': printstat = atoi(*cpp);
+                    break;               
+            case 'n': tinyp = atoi(*cpp);
                     break;   
             }
         }
@@ -446,6 +464,7 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
     set_default_options_dist (&(slu_obj->options));
     (slu_obj->options).Algo3d = YES;
     (slu_obj->options).IterRefine = NOREFINE;
+    (slu_obj->options).PrintStat = NO;
     // options.ParSymbFact       = YES;
     // options.ColPerm           = PARMETIS;
 #if 0
@@ -455,7 +474,9 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
     options.ColPerm = NATURAL;
     options.ReplaceTinyPivot = YES;
 #endif
-
+    
+    // (slu_obj->options).ReplaceTinyPivot = YES;
+    
     if ( batchCount > 0 )
         (slu_obj->options).batchCount = batchCount;
 
@@ -466,6 +487,8 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
     if (lookahead != -1) (slu_obj->options).num_lookaheads = lookahead;
     if (symbfact != -1) (slu_obj->options).ParSymbFact = symbfact;
     if (sympattern==1) (slu_obj->options).SymPattern = YES;
+    if (printstat==1) (slu_obj->options).PrintStat = YES;
+    if (tinyp==1) (slu_obj->options).ReplaceTinyPivot = YES;
 
     //////* this test SolveOnly*/
     // options.SolveOnly = YES;
@@ -477,8 +500,8 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
 
     iam = slu_obj->grid3d.iam;
     if (!iam) {
-	print_sp_ienv_dist(&(slu_obj->options));
-	print_options_dist(&(slu_obj->options));
+	if (printstat==1)print_sp_ienv_dist(&(slu_obj->options));
+	if (printstat==1)print_options_dist(&(slu_obj->options));
 	fflush(stdout);
     }
     
@@ -497,16 +520,16 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
     /* ------------------------------------------------------------
        INITIALIZE GPU ENVIRONMENT
        ------------------------------------------------------------ */
-    int superlu_acc_offload = sp_ienv_dist(10, &(slu_obj->options)); //get_acc_offload();
+    int_t superlu_acc_offload = get_acc_offload(&(slu_obj->options));
     if (superlu_acc_offload) {
         MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
         double t1 = SuperLU_timer_();
         gpuFree(0);
         double t2 = SuperLU_timer_();
-        if(!myrank)printf("first gpufree time: %7.4f\n",t2-t1);
+        if(!myrank && printstat==1)printf("first gpufree time: %7.4f\n",t2-t1);
         gpublasHandle_t hb;
         gpublasCreate(&hb);
-        if(!myrank)printf("first blas create time: %7.4f\n",SuperLU_timer_()-t2);
+        if(!myrank && printstat==1)printf("first blas create time: %7.4f\n",SuperLU_timer_()-t2);
         gpublasDestroy(hb);
 	}
 #endif
@@ -515,19 +538,19 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
 	MPI_Query_thread(&omp_mpi_level);
 	switch (omp_mpi_level) {
 	case MPI_THREAD_SINGLE:
-	    printf("MPI_Query_thread with MPI_THREAD_SINGLE\n");
+	    if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_SINGLE\n");
 	    fflush(stdout);
 	    break;
 	case MPI_THREAD_FUNNELED:
-	    printf("MPI_Query_thread with MPI_THREAD_FUNNELED\n");
+	    if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_FUNNELED\n");
 	    fflush(stdout);
 	    break;
 	case MPI_THREAD_SERIALIZED:
-	    printf("MPI_Query_thread with MPI_THREAD_SERIALIZED\n");
+	    if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_SERIALIZED\n");
 	    fflush(stdout);
 	    break;
 	case MPI_THREAD_MULTIPLE:
-	    printf("MPI_Query_thread with MPI_THREAD_MULTIPLE\n");
+	    if(printstat==1)printf("MPI_Query_thread with MPI_THREAD_MULTIPLE\n");
 	    fflush(stdout);
 	    break;
 	}
@@ -539,21 +562,21 @@ void pdbridge_init3d (int_t m, int_t n, int_t nnz, int_t *rowind, int_t *colptr 
     if (!iam) {
 	int v_major, v_minor, v_bugfix;
 #ifdef __INTEL_COMPILER
-	printf("__INTEL_COMPILER is defined\n");
+	if(printstat==1)printf("__INTEL_COMPILER is defined\n");
 #endif
-	printf("__STDC_VERSION__ %ld\n", __STDC_VERSION__);
+	if(printstat==1)printf("__STDC_VERSION__ %ld\n", __STDC_VERSION__);
 
 	superlu_dist_GetVersionNumber(&v_major, &v_minor, &v_bugfix);
-	printf("Library version:\t%d.%d.%d\n", v_major, v_minor, v_bugfix);
+	if(printstat==1)printf("Library version:\t%d.%d.%d\n", v_major, v_minor, v_bugfix);
 
 	// printf("Input matrix file:\t%s\n", *cpp);
-	printf("3D process grid: %d X %d X %d\n", nprow, npcol, npdep);
+	if(printstat==1)printf("3D process grid: %d X %d X %d\n", nprow, npcol, npdep);
 	//printf("2D Process grid: %d X %d\n", (int)grid.nprow, (int)grid.npcol);
 	fflush(stdout);
     }
 
 
-    if ( batchCount > 0 ) {	
+    if ( batchCount > 1 ) {	
     } else {
         dcreate_matrix_from_csc3d(&(slu_obj->A),m, n, nnz, rowind, colptr, nzval, &(slu_obj->grid3d));
     }
@@ -608,7 +631,7 @@ void pdbridge_factor2d(void ** pyobj)
     int      nprow, npcol, lookahead, colperm, rowperm, ir, symbfact, batch;
     int      iam, info, ldb, ldx;
     char     **cpp, c, *postfix;;
-    FILE *fp, *fopen();
+    FILE *fp;
     int cpp_defs();
     int ii, omp_mpi_level,m;
     int ldumap, myrank, p; /* The following variables are used for batch solves */
@@ -703,7 +726,7 @@ void pdbridge_factor3d (void ** pyobj)
     int equil, colperm, rowperm, ir, lookahead, sympattern;
     int iam, info, ldb, ldx;
     char **cpp, c, *suffix;
-    FILE *fp, *fopen ();
+    FILE *fp;
     extern int cpp_defs ();
     int ii, omp_mpi_level, batchCount = 0, m, i, j;
     int*    usermap;     /* The following variables are used for batch solves */
@@ -788,16 +811,16 @@ out:
 void pdbridge_solve2d(void ** pyobj, int nrhs, double   *b_global)
 {
     slu_handle* slu_obj = (slu_handle*)(*pyobj);
-    int_t    m_loc, fst_row, nnz_loc,row;
+    int_t    m_loc, m_loc1, fst_row, fst_row1, nnz_loc,row;
     int_t    m_loc_fst; /* Record m_loc of the first p-1 processors,
 			   when mod(m, p) is not zero. */ 
     double   *berr;
-    double   *b;
+    double   *b, *btmp, *b_global_tmp;
     int    m1, n1;
     int      nprow, npcol, lookahead, colperm, rowperm, ir, symbfact, batch;
     int      iam, info, ldb, ldx;
     char     **cpp, c, *postfix;;
-    FILE *fp, *fopen();
+    FILE *fp;
     int cpp_defs();
     int ii, omp_mpi_level,m;
     int ldumap, myrank, p; /* The following variables are used for batch solves */
@@ -810,6 +833,7 @@ void pdbridge_solve2d(void ** pyobj, int nrhs, double   *b_global)
     result_max[1]=0.0;
     MPI_Comm SubComm;
 
+    MPI_Bcast( &nrhs, 1, MPI_INT, 0, (slu_obj->grid).comm );
 
     /* Bail out if I do not belong in the grid. */
     iam = (slu_obj->grid).iam;
@@ -817,13 +841,6 @@ void pdbridge_solve2d(void ** pyobj, int nrhs, double   *b_global)
     npcol = (slu_obj->grid).npcol;
     if ( (iam >= nprow * npcol) || (iam == -1) ) goto out;
     m = (slu_obj->A).nrow;
-
-    if (iam == 0) {
-        MPI_Bcast( b_global, m*nrhs, MPI_DOUBLE, 0, (slu_obj->grid).comm );
-    } else {
-        MPI_Bcast( b_global, m*nrhs, MPI_DOUBLE, 0, (slu_obj->grid).comm );
-    }
-
 
     /* Compute the number of rows to be distributed to local process */
     m_loc = m / ((slu_obj->grid).nprow * (slu_obj->grid).npcol); 
@@ -840,12 +857,53 @@ void pdbridge_solve2d(void ** pyobj, int nrhs, double   *b_global)
     /* Get the local B */
     if ( !(b = doubleMalloc_dist(m_loc*nrhs)) )
         ABORT("Malloc fails for rhs[]");
-    for (int j =0; j < nrhs; ++j) {
-	for (int i = 0; i < m_loc; ++i) {
-	    row = fst_row + i;
-	    b[j*m_loc+i] = b_global[j*m+row];
-	}
+
+
+    if(nprow * npcol>1){
+        if ( !(btmp = doubleMalloc_dist(m_loc * nrhs)) )
+            ABORT("Malloc fails for rhs[]");
+        int *counts = NULL, *displs = NULL;
+        if (iam == 0) {
+            counts = (int *) intMalloc_dist(nprow * npcol);
+            displs = (int *) intMalloc_dist(nprow * npcol);
+            if ( !(b_global_tmp = doubleMalloc_dist(m * nrhs)) )
+                ABORT("Malloc fails for b_global_tmp[]");
+            for (int j = 0; j < nrhs; ++j) {
+                for (int i = 0; i < m; ++i) {
+                    b_global_tmp[j + i * nrhs] = b_global[j * m + i];
+                }
+            }
+        }
+        m_loc1 = m_loc*nrhs;
+        fst_row1 = fst_row*nrhs;
+        MPI_Gather(&m_loc1, 1, MPI_INT, counts, 1, MPI_INT, 0, (slu_obj->grid).comm);
+        MPI_Gather(&fst_row1, 1, MPI_INT, displs, 1, MPI_INT, 0, (slu_obj->grid).comm);
+        MPI_Scatterv(b_global_tmp, counts, displs, MPI_DOUBLE,  btmp, m_loc * nrhs, MPI_DOUBLE, 0, (slu_obj->grid).comm);
+        
+        for (int j = 0; j < nrhs; ++j)
+        {
+            for (int i = 0; i < m_loc; ++i)
+            {
+                b[j * m_loc + i] = btmp[j + i * nrhs];
+            }
+        }
+        if (iam == 0) {
+            SUPERLU_FREE(counts);
+            SUPERLU_FREE(displs);
+            SUPERLU_FREE(b_global_tmp);
+        }
+        SUPERLU_FREE(btmp);
+
+    } else {
+        for (int j =0; j < nrhs; ++j) {
+        for (int i = 0; i < m_loc; ++i) {
+            row = fst_row + i;
+            b[j*m_loc+i] = b_global[j*m+row];
+        }
+        }
     }
+
+
     ldb = m_loc;
 
     if ( !(berr = doubleMalloc_dist(nrhs)) )
@@ -855,12 +913,50 @@ void pdbridge_solve2d(void ** pyobj, int nrhs, double   *b_global)
     pdgssvx(&(slu_obj->options), &(slu_obj->A), &(slu_obj->ScalePermstruct), b, ldb, nrhs, &(slu_obj->grid),
 	    &(slu_obj->LUstruct), &(slu_obj->SOLVEstruct), berr, &(slu_obj->stat), &info);
 
-    for (int j =0; j < nrhs; ++j) {
-	for (int i = 0; i < m_loc; ++i) {
-	    row = fst_row + i;
-	    b_global[j*m+row] = b[j*m_loc+i] ;
-	}
+
+    if(nprow * npcol>1){
+        if ( !(btmp = doubleMalloc_dist(m_loc * nrhs)) )
+            ABORT("Malloc fails for rhs[]");
+        for (int j = 0; j < nrhs; ++j)
+        {
+            for (int i = 0; i < m_loc; ++i)
+            {
+                btmp[j + i * nrhs] = b[j * m_loc + i];
+            }
+        }
+        int *counts = NULL, *displs = NULL;
+        if (iam == 0) {
+            counts = (int *) intMalloc_dist(nprow * npcol);
+            displs = (int *) intMalloc_dist(nprow * npcol);
+            if ( !(b_global_tmp = doubleMalloc_dist(m * nrhs)) )
+                ABORT("Malloc fails for b_global_tmp[]");
+        }
+        m_loc1 = m_loc*nrhs;
+        fst_row1 = fst_row*nrhs;
+        MPI_Gather(&m_loc1, 1, MPI_INT, counts, 1, MPI_INT, 0, (slu_obj->grid).comm);
+        MPI_Gather(&fst_row1, 1, MPI_INT, displs, 1, MPI_INT, 0, (slu_obj->grid).comm);
+        MPI_Gatherv(btmp, m_loc * nrhs, MPI_DOUBLE, b_global_tmp, counts, displs, MPI_DOUBLE, 0, (slu_obj->grid).comm);
+        if (iam == 0) {
+            for (int j = 0; j < nrhs; ++j) {
+                for (int i = 0; i < m; ++i) {
+                    b_global[j * m + i] = b_global_tmp[j + i * nrhs];
+                }
+            }
+            SUPERLU_FREE(counts);
+            SUPERLU_FREE(displs);
+            SUPERLU_FREE(b_global_tmp);
+        }
+        SUPERLU_FREE(btmp);
+
+    } else {
+        for (int j =0; j < nrhs; ++j) {
+        for (int i = 0; i < m_loc; ++i) {
+            row = fst_row + i;
+            b_global[j*m+row] = b[j*m_loc+i] ;
+        }
+        }
     }
+
 
     PStatPrint(&(slu_obj->options), &(slu_obj->stat), &(slu_obj->grid));        /* Print the statistics. */
     // slu_obj->options.Fact = FACTORED;
@@ -898,13 +994,13 @@ void pdbridge_solve3d (void ** pyobj, int nrhs, double   *b_global)
     int_t    m_loc_fst; /* Record m_loc of the first p-1 processors,
 			   when mod(m, p) is not zero. */ 
     double *berr;
-    double *b, *xtrue;
+    double *b,*btmp,*b_global_tmp,*xtrue;
     int_t m1, n1;   
     int nprow, npcol, npdep;
     int equil, colperm, rowperm, ir, lookahead, sympattern;
     int iam, info, ldb, ldx;
     char **cpp, c, *suffix;
-    FILE *fp, *fopen ();
+    FILE *fp;
     extern int cpp_defs ();
     int ii, omp_mpi_level, batchCount = 0, m, i, j;
     int*    usermap;     /* The following variables are used for batch solves */
@@ -917,16 +1013,21 @@ void pdbridge_solve3d (void ** pyobj, int nrhs, double   *b_global)
     MPI_Comm SubComm;
     int myrank, p;
 
+    MPI_Bcast( &nrhs, 1, MPI_INT, 0, (slu_obj->grid3d).comm );
+
 
     /* Bail out if I do not belong in the grid. */
     iam = (slu_obj->grid3d).iam;
+    nprow = (slu_obj->grid3d).nprow;
+    npcol = (slu_obj->grid3d).npcol;
+    npdep = (slu_obj->grid3d).npdep;
     if (iam == -1)     goto out;
     m = (slu_obj->A).nrow;
-    if (iam == 0) {
-        MPI_Bcast( b_global, m*nrhs, MPI_DOUBLE, 0, (slu_obj->grid3d).comm );
-    } else {
-        MPI_Bcast( b_global, m*nrhs, MPI_DOUBLE, 0, (slu_obj->grid3d).comm );
-    }
+    // if (iam == 0) {
+    //     MPI_Bcast( b_global, m*nrhs, MPI_DOUBLE, 0, (slu_obj->grid3d).comm );
+    // } else {
+    //     MPI_Bcast( b_global, m*nrhs, MPI_DOUBLE, 0, (slu_obj->grid3d).comm );
+    // }
 
 
     /* Compute the number of rows to be distributed to local process */
@@ -944,14 +1045,50 @@ void pdbridge_solve3d (void ** pyobj, int nrhs, double   *b_global)
     /* Get the local B */
     if ( !(b = doubleMalloc_dist(m_loc * nrhs)) )
         ABORT("Malloc fails for rhs[]");
-    for (j = 0; j < nrhs; ++j)
-    {
-        for (i = 0; i < m_loc; ++i)
+    if(nprow * npcol * npdep>1){
+        if ( !(btmp = doubleMalloc_dist(m_loc * nrhs)) )
+            ABORT("Malloc fails for rhs[]");
+        int *counts = NULL, *displs = NULL;
+        if (iam == 0) {
+            counts = (int *) intMalloc_dist(nprow * npcol* npdep);
+            displs = (int *) intMalloc_dist(nprow * npcol* npdep);
+            if ( !(b_global_tmp = doubleMalloc_dist(m * nrhs)) )
+                ABORT("Malloc fails for b_global_tmp[]");
+            for (int j = 0; j < nrhs; ++j) {
+                for (int i = 0; i < m; ++i) {
+                    b_global_tmp[j + i * nrhs] = b_global[j * m + i];
+                }
+            }
+        }
+        int m_loc1 = m_loc*nrhs;
+        int fst_row1 = fst_row*nrhs;
+        MPI_Gather(&m_loc1, 1, MPI_INT, counts, 1, MPI_INT, 0, (slu_obj->grid3d).comm);
+        MPI_Gather(&fst_row1, 1, MPI_INT, displs, 1, MPI_INT, 0, (slu_obj->grid3d).comm);
+        MPI_Scatterv(b_global_tmp, counts, displs, MPI_DOUBLE,  btmp, m_loc * nrhs, MPI_DOUBLE, 0, (slu_obj->grid3d).comm);
+        
+        for (int j = 0; j < nrhs; ++j)
         {
+            for (int i = 0; i < m_loc; ++i)
+            {
+                b[j * m_loc + i] = btmp[j + i * nrhs];
+            }
+        }
+        if (iam == 0) {
+            SUPERLU_FREE(counts);
+            SUPERLU_FREE(displs);
+            SUPERLU_FREE(b_global_tmp);
+        }
+        SUPERLU_FREE(btmp);
+
+    } else {
+        for (int j =0; j < nrhs; ++j) {
+        for (int i = 0; i < m_loc; ++i) {
             row = fst_row + i;
-            b[j * m_loc + i] = b_global[j*m+row];
+            b[j*m_loc+i] = b_global[j*m+row];
+        }
         }
     }
+
     ldb = m_loc;
 
     if ( !(berr = doubleMalloc_dist(nrhs)) )
@@ -962,11 +1099,47 @@ void pdbridge_solve3d (void ** pyobj, int nrhs, double   *b_global)
                &(slu_obj->LUstruct), &(slu_obj->SOLVEstruct), berr, &(slu_obj->stat), &info);
 
 
-    for (int j =0; j < nrhs; ++j) {
-	for (int i = 0; i < m_loc; ++i) {
-	    row = fst_row + i;
-	    b_global[j*m+row] = b[j*m_loc+i] ;
-	}
+    if(nprow * npcol * npdep>1){
+        if ( !(btmp = doubleMalloc_dist(m_loc * nrhs)) )
+            ABORT("Malloc fails for rhs[]");
+        for (int j = 0; j < nrhs; ++j)
+        {
+            for (int i = 0; i < m_loc; ++i)
+            {
+                btmp[j + i * nrhs] = b[j * m_loc + i];
+            }
+        }
+        int *counts = NULL, *displs = NULL;
+        if (iam == 0) {
+            counts = (int *) intMalloc_dist(nprow * npcol * npdep);
+            displs = (int *) intMalloc_dist(nprow * npcol * npdep);
+            if ( !(b_global_tmp = doubleMalloc_dist(m * nrhs)) )
+                ABORT("Malloc fails for b_global_tmp[]");
+        }
+        int m_loc1 = m_loc*nrhs;
+        int fst_row1 = fst_row*nrhs;
+        MPI_Gather(&m_loc1, 1, MPI_INT, counts, 1, MPI_INT, 0, (slu_obj->grid3d).comm);
+        MPI_Gather(&fst_row1, 1, MPI_INT, displs, 1, MPI_INT, 0, (slu_obj->grid3d).comm);
+        MPI_Gatherv(btmp, m_loc * nrhs, MPI_DOUBLE, b_global_tmp, counts, displs, MPI_DOUBLE, 0, (slu_obj->grid3d).comm);
+        if (iam == 0) {
+            for (int j = 0; j < nrhs; ++j) {
+                for (int i = 0; i < m; ++i) {
+                    b_global[j * m + i] = b_global_tmp[j + i * nrhs];
+                }
+            }
+            SUPERLU_FREE(counts);
+            SUPERLU_FREE(displs);
+            SUPERLU_FREE(b_global_tmp);
+        }
+        SUPERLU_FREE(btmp);
+
+    } else {
+        for (int j =0; j < nrhs; ++j) {
+        for (int i = 0; i < m_loc; ++i) {
+            row = fst_row + i;
+            b_global[j*m+row] = b[j*m_loc+i] ;
+        }
+        }
     }
 
 
@@ -1230,10 +1403,10 @@ void pdbridge_free2d(void ** pyobj)
 
     if ( iam != -1 ) PStatFree(&(slu_obj->stat));
 
-    /* ------------------------------------------------------------
-       TERMINATES THE MPI EXECUTION ENVIRONMENT.
-       ------------------------------------------------------------*/
-    MPI_Finalize();
+    // /* ------------------------------------------------------------
+    //    TERMINATES THE MPI EXECUTION ENVIRONMENT.
+    //    ------------------------------------------------------------*/
+    // MPI_Finalize();
 
     *pyobj = (void*)slu_obj;
 
@@ -1261,7 +1434,7 @@ void pdbridge_free3d(void ** pyobj)
     dLUstructFree (&(slu_obj->LUstruct));
     superlu_gridexit3d (&(slu_obj->grid3d));
     if ( iam != -1 ) PStatFree (&(slu_obj->stat));
-    MPI_Finalize ();
+    // MPI_Finalize ();
     *pyobj = (void*)slu_obj;
 }
 
